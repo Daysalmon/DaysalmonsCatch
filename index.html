@@ -68,8 +68,8 @@
             const touch = e.touches[0];
             const deltaX = touch.clientX - touchStartX;
             const deltaY = touch.clientY - touchStartY;
-            moveX = deltaX * 0.02; // Increased from 0.005 for faster movement
-            moveY = -deltaY * 0.02; // Increased from 0.005, inverted Y
+            moveX = deltaX * 0.05; // Increased from 0.02 to 0.05 for faster movement
+            moveY = -deltaY * 0.05; // Increased from 0.02 to 0.05, inverted Y
             touchStartX = touch.clientX;
             touchStartY = touch.clientY;
             e.preventDefault();
