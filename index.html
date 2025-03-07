@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Cube Collector</title>
+    <style>
+        body { margin: 0; overflow: hidden; touch-action: none; } /* Prevent pinch-zoom/scroll */
+        #score { position: absolute; top: 10px; left: 10px; color: white; font-family: Arial; font-size: 20px; z-index: 1; }
+        canvas { width: 100%; height: 100%; }
+    </style>
+</head>
+<body>
+    <div id="score">Score: 0</div>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r134/three.min.js"></script>
+    <script>
+        // Scene setup
+        const scene = new THREE.Scene();
+        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+        const renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        document.body.appendChild(renderer.domElement);
+
+        // Player (cube)
+        const playerGeometry = new THREE.BoxGeometry(1, 1, 1);
+        const playerMaterial = new THREE.MeshBasicMaterial({ color: 0x00ff00 });
+        const player = new THREE.Mesh(playerGeometry, playerMaterial);
+        player.position.set(0, 0, 0);
+        scene.add(player);
+
+        // Spheres to collect
+        const spheres = [];
+        let score = 0;
+        const scoreDisplay = document.getElementById('score');
+        function addSphere() {
+            const sphereGeometry = new THREE.SphereGeometry(0.5, 32, 32);
+            const sphereMaterial = new THREE.MeshBasicMaterial({ color: 0xff0000 });
+            const sphere = new THREE.Mesh(sphereGeometry, sphereMaterial);
+            sphere.position.set(
+                (Math.random() - 0.5) * 20,
+                (Math.random() - 0.5) * 20,
+                (Math.random() - 0.5) * 2
+            );
+            scene.add(sphere);
+            spheres.push(sphere);
+        }
+        for (let i = 0; i < 3; i++) addSphere();
+
+        // Camera setup
+        camera.position.set(0, 5, 15);
+        camera.lookAt(0, 0, 0);
+
+        // Controls (keyboard + touch)
+        const keys = {};
+        let touchStartX = null, touchStartY = null;
+        let moveX = 0, moveY = 0;
+        let boost = 1; // Speed multiplier for tap boost
+
+        // Keyboard
+        document.addEventListener('keydown', (e) => keys[e.key] = true);
+        document.addEventListener('keyup', (e) => keys[e.key] = false);
+
+        // Touch events
+        document.addEventListener('touchstart', (e) => {
+            const touch = e.touches[0];
+            touchStartX = touch.clientX;
+            touchStartY = touch.clientY;
+            boost = 2; // Tap boost
+            setTimeout(() => boost = 1, 200); // Boost lasts 200ms
+            e.preventDefault();
+        }, { passive: false });
+        document.addEventListener('touchmove', (e) => {
+            const touch = e.touches[0];
+            const deltaX = touch.clientX - touchStartX;
+            const deltaY = touch.clientY - touchStartY;
+            moveX = deltaX * 0.005; // Sensitivity
+            moveY = -deltaY * 0.005; // Invert Y for natural feel
+            touchStartX = touch.clientX;
+            touchStartY = touch.clientY;
+            e.preventDefault();
+        }, { passive: false });
+        document.addEventListener('touchend', () => {
+            moveX = 0;
+            moveY = 0;
+            touchStartX = null;
+            touchStartY = null;
+        });
+
+        // Animation loop
+        function animate() {
+            requestAnimationFrame(animate);
+            const speed = 0.1 * boost;
+
+            // Keyboard movement
+            if (keys['ArrowUp']) player.position.y += speed;
+            if (keys['ArrowDown']) player.position.y -= speed;
+            if (keys['ArrowLeft']) player.position.x -= speed;
+            if (keys['ArrowRight']) player.position.x += speed;
+
+            // Touch movement
+            player.position.x += moveX;
+            player.position.y += moveY;
+
+            // Keep player in bounds
+            player.position.x = Math.max(-10, Math.min(10, player.position.x));
+            player.position.y = Math.max(-8, Math.min(8, player.position.y));
+
+            // Rotate cube
+            player.rotation.x += 0.01;
+            player.rotation.y += 0.01;
+
+            // Move spheres
+            spheres.forEach(sphere => {
+                sphere.position.x += Math.sin(Date.now() * 0.001) * 0.01;
+            });
+
+            // Collision detection
+            for (let i = spheres.length - 1; i >= 0; i--) {
+                const distance = player.position.distanceTo(spheres[i].position);
+                if (distance < 1.5) {
+                    scene.remove(spheres[i]);
+                    spheres.splice(i, 1);
+                    score += 10;
+                    scoreDisplay.textContent = `Score: ${score}`;
+                    addSphere();
+                }
+            }
+
+            renderer.render(scene, camera);
+        }
+        animate();
+
+        // Handle resize (mobile + desktop)
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+    </script>
+</body>
+</html>
