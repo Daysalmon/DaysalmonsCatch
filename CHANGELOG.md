@@ -7,13 +7,20 @@ All notable changes to the DaysalmonsCatch minigame hub will be documented here.
 
 ## [2025-03-11]
 - **Cube Collector:** Fixed sphere spawn bounds (x: ±9, y: ±7) to ensure all are reachable by the cube on both PC and mobile.
-- **Site:** Renamed repository from `CubeCollector` to `DaysalmonsCatch` to reflect multi-game hub vision.
+- **Site:** Renamed repository from `CubeCollector` to `DaysalmonsCatch` for multi-game hub vision.
 - **Site:** Moved Cube Collector game from root `index.html` to `cube-collector/index.html` subfolder.
 - **Site:** Added hub landing page at root `index.html` with link to Cube Collector.
 - **Site:** Created `CHANGELOG.md` at root to track project-wide changes.
+- **Cube Collector:** Added vertical mobile support with dynamic camera adjustment (FOV and position).
+  - *Details:* 
+    - Added `updateCamera()` function:
+      - Vertical (aspect < 1): `fov = 50`, `z = 20`—zooms out to fit `x: ±9`.
+      - Landscape (aspect > 1): `fov = 75`, `z = 15`—original immersive view.
+    - Added resize listener to call `updateCamera()` on window resize/orientation change—keeps it responsive.
+    - Retained existing bounds: speed (`0.1`), cube (`x: ±10`, `y: ±8`), spheres (`x: ±9`, `y: ±7`).
 
 ## [2025-03-10]
-- **Cube Collector:** Increased mobile swipe speed multiplier to 0.1 (from 0.05) for better responsiveness on Android/Chrome.
+- **Cube Collector:** Increased mobile swipe speed to 0.1 multiplier (from 0.05) for better responsiveness on Android/Chrome.
 - **Cube Collector:** Added mobile touch support with swipe movement (initial multiplier 0.005, then 0.02, finally 0.1).
 
 ## [2025-03-09]
