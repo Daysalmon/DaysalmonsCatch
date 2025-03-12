@@ -17,6 +17,14 @@ All notable changes to the DaysalmonsCatch minigame hub will be documented here.
 - Introduced mock "Buy Blaster" button linking to /payments/coming-soon.html
 - Updated styling for responsive, chill vibe
 ## [0.1.0] - 2025-03-12
+### Changed
+- Updated `BattleTank/index.html` to debug white screen issue:
+  - Swapped tank with a rotating red cube for render testing.
+  - Added error logging with try-catch and console outputs.
+  - Fixed Three.js to v0.162.0 for consistent CDN behavior.
+  - Set black background for visibility of rendered objects.
+
+## [0.1.0] - 2025-03-12
 ### Added
 - Initial BattleTank game setup with Three.js at BattleTank/index.html
 - Basic tank movement (WASD) and shooting (Space)
