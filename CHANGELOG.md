@@ -16,6 +16,11 @@ All notable changes to the DaysalmonsCatch minigame hub will be documented here.
 - Added game cards with hover effects
 - Introduced mock "Buy Blaster" button linking to /payments/coming-soon.html
 - Updated styling for responsive, chill vibe
+## [0.1.0] - 2025-03-12
+### Added
+- Initial BattleTank game setup with Three.js at BattleTank/index.html
+- Basic tank movement (WASD) and shooting (Space)
+- Low-poly tank and ground visuals
 
 ## [2025-03-11]
 - **Cube Collector:** Fixed sphere spawn bounds (x: ±9, y: ±7) to ensure all are reachable by the cube on both PC and mobile.
