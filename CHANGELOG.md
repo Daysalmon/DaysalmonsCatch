@@ -5,12 +5,17 @@ All notable changes to the DaysalmonsCatch minigame hub will be documented here.
 ## [Unreleased]
 - (Future changes go here)
 
-  ## [2025-03-12]
-- - **Cube Collector:** Tweaked vertical mobile speed and bounds visibility.
+## [2025-03-12]
+- **Cube Collector:** Tweaked vertical mobile speed and bounds visibility.
   - *Details:*
     - Vertical swipe speed: `0.07` (was `0.05`), matches landscape.
     - Vertical sphere x-range: `±5` (was `±6`) for better visibility.
     - Vertical camera: `z = 25` (was `20`) to fit `x: ±10` bounds.
+## [2025-03-12] - Hub Page Revamp
+- Redesigned index.html with fisherman theme (sea gradient, wood tones)
+- Added game cards with hover effects
+- Introduced mock "Buy Blaster" button linking to /payments/coming-soon.html
+- Updated styling for responsive, chill vibe
 
 ## [2025-03-11]
 - **Cube Collector:** Fixed sphere spawn bounds (x: ±9, y: ±7) to ensure all are reachable by the cube on both PC and mobile.
