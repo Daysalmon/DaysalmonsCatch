@@ -12,18 +12,21 @@
     <div id="score">Score: 0</div>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r134/three.min.js"></script>
     <script>
+        // Scene setup
         const scene = new THREE.Scene();
         const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
         const renderer = new THREE.WebGLRenderer({ antialias: true });
         renderer.setSize(window.innerWidth, window.innerHeight);
         document.body.appendChild(renderer.domElement);
 
+        // Player (cube)
         const playerGeometry = new THREE.BoxGeometry(1, 1, 1);
         const playerMaterial = new THREE.MeshBasicMaterial({ color: 0x00ff00 });
         const player = new THREE.Mesh(playerGeometry, playerMaterial);
         player.position.set(0, 0, 0);
         scene.add(player);
 
+        // Spheres to collect
         const spheres = [];
         let score = 0;
         const scoreDisplay = document.getElementById('score');
@@ -32,18 +35,32 @@
             const sphereMaterial = new THREE.MeshBasicMaterial({ color: 0xff0000 });
             const sphere = new THREE.Mesh(sphereGeometry, sphereMaterial);
             sphere.position.set(
-                (Math.random() - 0.5) * 18, // Reduced from 20 to 18 (x: -9 to 9)
-                (Math.random() - 0.5) * 14, // Reduced from 20 to 14 (y: -7 to 7)
-                (Math.random() - 0.5) * 2   // z: -1 to 1
+                (Math.random() - 0.5) * 18, // x: ±9
+                (Math.random() - 0.5) * 14, // y: ±7
+                (Math.random() - 0.5) * 2  // z: -1 to 1
             );
             scene.add(sphere);
             spheres.push(sphere);
         }
         for (let i = 0; i < 3; i++) addSphere();
 
-        camera.position.set(0, 5, 15);
-        camera.lookAt(0, 0, 0);
+        // Camera setup with dynamic adjustment
+        function updateCamera() {
+            const aspect = window.innerWidth / window.innerHeight;
+            if (aspect < 1) { // Vertical
+                camera.fov = 50; // Narrower FOV
+                camera.position.set(0, 5, 20); // Pull back
+            } else { // Landscape
+                camera.fov = 75; // Wider FOV
+                camera.position.set(0, 5, 15); // Closer
+            }
+            camera.aspect = aspect;
+            camera.updateProjectionMatrix();
+            camera.lookAt(0, 0, 0);
+        }
+        updateCamera(); // Initial call
 
+        // Controls (keyboard + touch)
         const keys = {};
         let touchStartX = null, touchStartY = null;
         let moveX = 0, moveY = 0;
@@ -74,6 +91,7 @@
             touchStartY = null;
         });
 
+        // Animation loop
         function animate() {
             requestAnimationFrame(animate);
             const speed = 0.1;
@@ -111,10 +129,10 @@
         }
         animate();
 
+        // Handle resize and orientation changes
         window.addEventListener('resize', () => {
-            camera.aspect = window.innerWidth / window.innerHeight;
-            camera.updateProjectionMatrix();
             renderer.setSize(window.innerWidth, window.innerHeight);
+            updateCamera(); // Re-adjust camera on resize
         });
     </script>
 </body>
