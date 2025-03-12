@@ -23,6 +23,11 @@ All notable changes to the DaysalmonsCatch minigame hub will be documented here.
     - Swipe speed: Vertical `0.05`, Landscape `0.07` (was `0.1` for both).
     - Sphere x-range: Vertical `±6`, Landscape `±9` (was `±9` for both).
     - Used aspect ratio to dynamically set speed and spawn bounds.
+- **Cube Collector:** Adjusted horizontal speed and vertical bounds/size for mobile.
+  - *Details:*
+    - Horizontal swipe speed: `0.1` (was `0.07`).
+    - Vertical sphere x-range: `±4` (was `±5`) for visibility.
+    - Vertical camera: `fov = 45` (was `50`), `z = 30` (was `25`) to fit `x: ±10` and balance object size.
 ## [2025-03-10]
 - **Cube Collector:** Increased mobile swipe speed to 0.1 multiplier (from 0.05) for better responsiveness on Android/Chrome.
 - **Cube Collector:** Added mobile touch support with swipe movement (initial multiplier 0.005, then 0.02, finally 0.1).
