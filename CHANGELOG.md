@@ -16,6 +16,12 @@ All notable changes to the DaysalmonsCatch minigame hub will be documented here.
 - Added game cards with hover effects
 - Introduced mock "Buy Blaster" button linking to /payments/coming-soon.html
 - Updated styling for responsive, chill vibe
+## [0.1.3] - 2025-03-12
+### Changed
+- Updated `BattleTank/index.html` to fix import error:
+  - Replaced importmap/module with direct `<script>` for Three.js.
+  - Switched to global THREE namespace to avoid SyntaxError on '*'.
+  - Kept red cube and debugging logs for render testing.
 ## [0.1.0] - 2025-03-12
 ### Changed
 - Updated `BattleTank/index.html` to debug white screen issue:
