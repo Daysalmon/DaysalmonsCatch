@@ -5,54 +5,48 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Battle Tank - DaysalmonsCatch</title>
     <style>
-        body { margin: 0; overflow: hidden; background: #000; } /* Black background to spot rendering */
+        body { margin: 0; overflow: hidden; background: #000; }
         canvas { display: block; }
     </style>
+    <!-- Load Three.js directly -->
+    <script src="https://unpkg.com/three@0.162.0/build/three.min.js"></script>
 </head>
 <body>
-    <script type="importmap">
-        {
-            "imports": {
-                "three": "https://unpkg.com/three@0.162.0/build/three.module.js",
-                "three/addons/": "https://unpkg.com/three@0.162.0/examples/jsm/"
-            }
-        }
-    </script>
-    <script type="module">
+    <script>
         try {
-            console.log("Script started");
+            alert("Script is running! Check the Console (F12 > Console) for logs.");
+            console.log("1. Script started");
 
-            // Import Three.js
-            import * as THREE from 'three';
-            import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
-
-            console.log("Three.js imported:", THREE);
+            // Three.js is now global as THREE
+            console.log("2. Three.js loaded:", typeof THREE !== 'undefined' ? THREE : 'Not found');
 
             // Scene setup
             const scene = new THREE.Scene();
+            console.log("3. Scene created");
+
             const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+            console.log("4. Camera created");
+
             const renderer = new THREE.WebGLRenderer({ antialias: true });
             renderer.setSize(window.innerWidth, window.innerHeight);
             document.body.appendChild(renderer.domElement);
-            console.log("Renderer initialized");
+            console.log("5. Renderer initialized and canvas added");
 
-            // Add a simple red cube to test rendering
+            // Add a red cube
             const geometry = new THREE.BoxGeometry(1, 1, 1);
             const material = new THREE.MeshBasicMaterial({ color: 0xff0000 });
             const cube = new THREE.Mesh(geometry, material);
             scene.add(cube);
+            console.log("6. Red cube added to scene");
 
-            // Lighting (basic ambient for visibility)
+            // Lighting
             const ambientLight = new THREE.AmbientLight(0xffffff, 1);
             scene.add(ambientLight);
+            console.log("7. Ambient light added");
 
             // Camera position
             camera.position.z = 5;
-            console.log("Scene setup complete");
-
-            // OrbitControls for testing
-            const controls = new OrbitControls(camera, renderer.domElement);
-            controls.update();
+            console.log("8. Camera positioned");
 
             // Animation loop
             function animate() {
@@ -62,7 +56,7 @@
                 renderer.render(scene, camera);
             }
             animate();
-            console.log("Animation loop started");
+            console.log("9. Animation loop started");
 
             // Resize handler
             window.addEventListener('resize', () => {
@@ -73,6 +67,7 @@
 
         } catch (error) {
             console.error("Error in script:", error);
+            alert("Error occurred. Check Console (F12 > Console) for details.");
         }
     </script>
 </body>
