@@ -3,18 +3,90 @@
 <head>
     <title>Daysalmon's Catch</title>
     <style>
-        body { font-family: Arial, sans-serif; text-align: center; padding: 20px; }
-        h1 { color: #333; }
-        ul { list-style: none; padding: 0; }
-        li { margin: 10px 0; }
-        a { text-decoration: none; color: #007bff; font-size: 18px; }
-        a:hover { text-decoration: underline; }
+        body {
+            font-family: 'Georgia', serif; /* Softer, classic font for a relaxed feel */
+            text-align: center;
+            padding: 20px;
+            background: linear-gradient(to bottom, #87CEEB, #4682B4); /* Sky to sea gradient */
+            color: #2F4F4F; /* Dark slate gray for text, earthy and calm */
+            margin: 0;
+            min-height: 100vh;
+        }
+        h1 {
+            color: #1E90FF; /* Dodger blue, bright yet oceanic */
+            font-size: 2.5em;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.2); /* Subtle depth */
+            margin-bottom: 30px;
+        }
+        .game-container {
+            background: rgba(245, 245, 220, 0.9); /* Beige parchment, slightly transparent */
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3); /* Weathered wood shadow */
+        }
+        ul {
+            list-style: none;
+            padding: 0;
+        }
+        li {
+            margin: 15px 0;
+        }
+        .game-card {
+            background: #DEB887; /* Burlywood, warm wood tone */
+            padding: 10px 20px;
+            border-radius: 5px;
+            display: inline-block;
+            transition: transform 0.2s ease; /* Smooth hover effect */
+        }
+        .game-card:hover {
+            transform: scale(1.05); /* Slight grow on hover */
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+        }
+        a {
+            text-decoration: none;
+            color: #228B22; /* Forest green, natural and grounded */
+            font-size: 18px;
+            font-weight: bold;
+        }
+        a:hover {
+            color: #FFD700; /* Goldenrod, a warm highlight */
+        }
+        .buy-btn {
+            display: block;
+            margin: 10px auto;
+            padding: 8px 16px;
+            background: #CD853F; /* Peru, earthy tackle-box brown */
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+            transition: background 0.2s ease;
+        }
+        .buy-btn:hover {
+            background: #8B4513; /* Saddle brown, darker on hover */
+        }
+        footer {
+            margin-top: 40px;
+            font-size: 14px;
+            color: #F5F5F5; /* Off-white for contrast on dark bg */
+        }
     </style>
 </head>
 <body>
     <h1>Welcome to Daysalmon's Catch</h1>
-    <ul>
-        <li><a href="./cube-collector/index.html">Cube Collector</a></li>
-    </ul>
+    <div class="game-container">
+        <ul>
+            <li>
+                <div class="game-card">
+                    <a href="./cube-collector/index.html">Cube Collector</a>
+                </div>
+                <button class="buy-btn" onclick="window.location.href='/payments/coming-soon.html'">Buy Blaster - $1.99</button>
+            </li>
+        </ul>
+    </div>
+    <footer>Cast a line, catch some fun!</footer>
 </body>
 </html>
