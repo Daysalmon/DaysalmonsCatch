@@ -16,7 +16,9 @@ All notable changes to the DaysalmonsCatch minigame hub will be documented here.
 - Added game cards with hover effects
 - Introduced mock "Buy Blaster" button linking to /payments/coming-soon.html
 - Updated styling for responsive, chill vibe
-## [0.1.6] - 2025-03-12
+## [0.1.8] - 2025-03-12
+### Changed
+- Updated `BattleTank/index.html` to use CDN `https://cdnjs.cloudflare.com/ajax/libs/three.js/r134/three.min.js` instead of local or r162, due to r134’s proven reliability.## [0.1.6] - 2025-03-12
 ### Changed
 - Updated `BattleTank/index.html` to use cdnjs for Three.js:
   - Switched to https://cdnjs.cloudflare.com/ajax/libs/three.js/0.162.0/three.min.js.
