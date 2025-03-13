@@ -8,67 +8,76 @@
         body { margin: 0; overflow: hidden; background: #000; }
         canvas { display: block; }
     </style>
-    <!-- Load Three.js directly -->
-    <script src="https://unpkg.com/three@0.162.0/build/three.min.js"></script>
+    <!-- Use cdnjs with a newer version -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/0.162.0/three.min.js" onload="initThreeJS()"></script>
 </head>
 <body>
     <script>
-        try {
-            alert("Script is running! Check the Console (F12 > Console) for logs.");
-            console.log("1. Script started");
+        console.log("1. Outer script started");
 
-            // Three.js is now global as THREE
-            console.log("2. Three.js loaded:", typeof THREE !== 'undefined' ? THREE : 'Not found');
-
-            // Scene setup
-            const scene = new THREE.Scene();
-            console.log("3. Scene created");
-
-            const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
-            console.log("4. Camera created");
-
-            const renderer = new THREE.WebGLRenderer({ antialias: true });
-            renderer.setSize(window.innerWidth, window.innerHeight);
-            document.body.appendChild(renderer.domElement);
-            console.log("5. Renderer initialized and canvas added");
-
-            // Add a red cube
-            const geometry = new THREE.BoxGeometry(1, 1, 1);
-            const material = new THREE.MeshBasicMaterial({ color: 0xff0000 });
-            const cube = new THREE.Mesh(geometry, material);
-            scene.add(cube);
-            console.log("6. Red cube added to scene");
-
-            // Lighting
-            const ambientLight = new THREE.AmbientLight(0xffffff, 1);
-            scene.add(ambientLight);
-            console.log("7. Ambient light added");
-
-            // Camera position
-            camera.position.z = 5;
-            console.log("8. Camera positioned");
-
-            // Animation loop
-            function animate() {
-                requestAnimationFrame(animate);
-                cube.rotation.x += 0.01;
-                cube.rotation.y += 0.01;
-                renderer.render(scene, camera);
+        function initThreeJS() {
+            console.log("2. initThreeJS called");
+            if (typeof THREE === 'undefined') {
+                console.error("3. Three.js not loaded");
+                alert("Three.js failed to load. Check Network tab (F12 > Network).");
+                return;
             }
-            animate();
-            console.log("9. Animation loop started");
 
-            // Resize handler
-            window.addEventListener('resize', () => {
-                camera.aspect = window.innerWidth / window.innerHeight;
-                camera.updateProjectionMatrix();
+            try {
+                alert("Three.js loaded! Starting setup.");
+                console.log("4. Three.js confirmed:", THREE);
+
+                const scene = new THREE.Scene();
+                console.log("5. Scene created");
+
+                const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+                console.log("6. Camera created");
+
+                const renderer = new THREE.WebGLRenderer({ antialias: true });
                 renderer.setSize(window.innerWidth, window.innerHeight);
-            });
+                document.body.appendChild(renderer.domElement);
+                console.log("7. Renderer initialized");
 
-        } catch (error) {
-            console.error("Error in script:", error);
-            alert("Error occurred. Check Console (F12 > Console) for details.");
+                const geometry = new THREE.BoxGeometry(1, 1, 1);
+                const material = new THREE.MeshBasicMaterial({ color: 0xff0000 });
+                const cube = new THREE.Mesh(geometry, material);
+                scene.add(cube);
+                console.log("8. Red cube added");
+
+                const ambientLight = new THREE.AmbientLight(0xffffff, 1);
+                scene.add(ambientLight);
+                console.log("9. Ambient light added");
+
+                camera.position.z = 5;
+                console.log("10. Camera positioned");
+
+                function animate() {
+                    requestAnimationFrame(animate);
+                    cube.rotation.x += 0.01;
+                    cube.rotation.y += 0.01;
+                    renderer.render(scene, camera);
+                }
+                animate();
+                console.log("11. Animation loop started");
+
+                window.addEventListener('resize', () => {
+                    camera.aspect = window.innerWidth / window.innerHeight;
+                    camera.updateProjectionMatrix();
+                    renderer.setSize(window.innerWidth, window.innerHeight);
+                });
+
+            } catch (error) {
+                console.error("Error in initThreeJS:", error);
+                alert("Error occurred. Check Console.");
+            }
         }
+
+        setTimeout(() => {
+            if (typeof THREE === 'undefined') {
+                console.error("12. Three.js failed to load after 5 seconds");
+                alert("Three.js didn’t load after 5s. Check Network tab.");
+            }
+        }, 5000);
     </script>
 </body>
 </html>
