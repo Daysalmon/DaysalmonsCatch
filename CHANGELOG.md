@@ -3,7 +3,10 @@
 All notable changes to the DaysalmonsCatch minigame hub will be documented here.
 
 ## [Unreleased]
-- (Future changes go here)
+## [0.1.9] - 2025-03-12
+### Changed
+- Updated `BattleTank/index.html` to fix `initThreeJS is not defined`:
+  - Moved script block to head before Three.js load to define function first.
 
 ## [2025-03-12]
 - **Cube Collector:** Tweaked vertical mobile speed and bounds visibility.
