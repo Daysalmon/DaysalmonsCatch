@@ -125,4 +125,69 @@
 
         // Movement physics
         let velocity = new THREE.Vector3(0, 0, 0);
-        const maxSpeed = 0.05
+        const maxSpeed = 0.05; // Lowered top speed
+        const acceleration = 0.005; // Gradual speedup
+        const friction = 0.02; // Slowdown
+        let angularVelocity = 0;
+        const maxAngularSpeed = 0.015; // Slower spin
+        const angularAcceleration = 0.002;
+        const angularFriction = 0.01;
+
+        // Animation loop
+        function animate() {
+            requestAnimationFrame(animate);
+
+            // Tank movement with inertia
+            if (keys['w']) {
+                velocity.x += Math.sin(tank.rotation.y) * acceleration;
+                velocity.z += Math.cos(tank.rotation.y) * acceleration;
+            }
+            if (keys['s']) {
+                velocity.x -= Math.sin(tank.rotation.y) * acceleration;
+                velocity.z -= Math.cos(tank.rotation.y) * acceleration;
+            }
+            if (keys['a']) angularVelocity += angularAcceleration;
+            if (keys['d']) angularVelocity -= angularAcceleration;
+
+            // Apply friction
+            velocity.multiplyScalar(1 - friction);
+            angularVelocity *= (1 - angularFriction);
+
+            // Cap speeds
+            velocity.clampLength(0, maxSpeed);
+            angularVelocity = Math.max(-maxAngularSpeed, Math.min(maxAngularSpeed, angularVelocity));
+
+            // Update position and rotation
+            tank.position.add(velocity);
+            tank.rotation.y += angularVelocity;
+            tank.position.y = 0;
+
+            // Projectiles
+            for (let i = projectiles.length - 1; i >= 0; i--) {
+                const p = projectiles[i];
+                p.position.add(p.userData.velocity);
+                if (p.position.distanceTo(tank.position) > 50) {
+                    scene.remove(p);
+                    projectiles.splice(i, 1);
+                }
+            }
+
+            // Camera follows tank (smoother transition)
+            const offset = new THREE.Vector3(0, 7, 10);
+            const targetPosition = tank.position.clone().add(offset);
+            camera.position.lerp(targetPosition, 0.1); // Smoother follow
+            camera.lookAt(tank.position);
+
+            renderer.render(scene, camera);
+        }
+        animate();
+
+        // Handle window resize
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+    </script>
+</body>
+</html>
