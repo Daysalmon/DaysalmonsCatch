@@ -8,10 +8,6 @@
         body { margin: 0; overflow: hidden; background: #000; }
         canvas { display: block; }
     </style>
-    <!-- Use r134 from cdnjs -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r134/three.min.js" onload="initThreeJS()"></script>
-</head>
-<body>
     <script>
         console.log("1. Outer script started");
 
@@ -23,10 +19,10 @@
                 return;
             }
 
-            try {
-                alert("Three.js loaded! Starting setup.");
-                console.log("4. Three.js confirmed:", THREE);
+            console.log("4. Three.js confirmed:", THREE);
+            alert("Three.js loaded! Starting setup.");
 
+            try {
                 const scene = new THREE.Scene();
                 console.log("5. Scene created");
 
@@ -68,7 +64,7 @@
 
             } catch (error) {
                 console.error("Error in initThreeJS:", error);
-                alert("Error occurred. Check Console.");
+                alert("Error occurred: " + error.message);
             }
         }
 
@@ -79,5 +75,8 @@
             }
         }, 5000);
     </script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r134/three.min.js" onload="initThreeJS()"></script>
+</head>
+<body>
 </body>
 </html>
