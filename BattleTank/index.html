@@ -21,18 +21,35 @@
         renderer.setSize(window.innerWidth, window.innerHeight);
         document.body.appendChild(renderer.domElement);
 
-        // Add basic lighting for depth
+        // Lighting
         const ambientLight = new THREE.AmbientLight(0x404040);
         scene.add(ambientLight);
         const directionalLight = new THREE.DirectionalLight(0xffffff, 0.5);
         directionalLight.position.set(0, 10, 10);
         scene.add(directionalLight);
 
-        // Ground
-        const groundGeometry = new THREE.PlaneGeometry(100, 100);
+        // Ground with grid texture
+        const groundGeometry = new THREE.PlaneGeometry(200, 200); // Larger ground
         const groundMaterial = new THREE.MeshLambertMaterial({ color: 0xaaaaaa });
         const ground = new THREE.Mesh(groundGeometry, groundMaterial);
         ground.rotation.x = -Math.PI / 2;
+        // Simple grid texture (procedural)
+        const canvas = document.createElement('canvas');
+        canvas.width = 256;
+        canvas.height = 256;
+        const ctx = canvas.getContext('2d');
+        ctx.fillStyle = '#aaaaaa';
+        ctx.fillRect(0, 0, 256, 256);
+        ctx.strokeStyle = '#888888';
+        for (let i = 0; i < 256; i += 32) {
+            ctx.beginPath();
+            ctx.moveTo(i, 0); ctx.lineTo(i, 256); ctx.stroke();
+            ctx.moveTo(0, i); ctx.lineTo(256, i); ctx.stroke();
+        }
+        const texture = new THREE.CanvasTexture(canvas);
+        texture.repeat.set(20, 20);
+        texture.wrapS = texture.wrapT = THREE.RepeatWrapping;
+        groundMaterial.map = texture;
         scene.add(ground);
 
         // Tank
@@ -67,8 +84,8 @@
         cannon.position.set(0, 1.1, 1);
         turret.add(cannon);
 
-        // Camera setup for 2.5D feel
-        camera.position.set(0, 7, 10); // Tilted view
+        // Camera setup
+        camera.position.set(0, 7, 10);
         camera.lookAt(tank.position);
 
         // Controls
@@ -93,70 +110,19 @@
             const projectileGeometry = new THREE.SphereGeometry(0.1, 8, 8);
             const projectileMaterial = new THREE.MeshBasicMaterial({ color: 0xffff00 });
             const projectile = new THREE.Mesh(projectileGeometry, projectileMaterial);
-            
-            // Start at cannon tip
-            const cannonTip = new THREE.Vector3();
-            cannon.getWorldPosition(cannonTip);
-            cannonTip.z += 1; // Offset from cannon end
+
+            // Correct spawn at cannon tip
+            const cannonTip = new THREE.Vector3(0, 0, 2); // Local cannon end
+            cannon.localToWorld(cannonTip); // Convert to world coordinates
             projectile.position.copy(cannonTip);
-            
-            // Direction based on turret
+
             const direction = new THREE.Vector3();
             turret.getWorldDirection(direction);
-            projectile.userData.velocity = direction.multiplyScalar(0.5); // Speed
-            
+            projectile.userData.velocity = direction.multiplyScalar(0.5);
             scene.add(projectile);
             projectiles.push(projectile);
         });
 
-        // Animation loop
-        function animate() {
-            requestAnimationFrame(animate);
-
-            // Tank movement (relative to facing direction)
-            const speed = 0.1;
-            const rotationSpeed = 0.03;
-            if (keys['w']) {
-                tank.position.x += Math.sin(tank.rotation.y) * speed;
-                tank.position.z += Math.cos(tank.rotation.y) * speed;
-            }
-            if (keys['s']) {
-                tank.position.x -= Math.sin(tank.rotation.y) * speed;
-                tank.position.z -= Math.cos(tank.rotation.y) * speed;
-            }
-            if (keys['a']) tank.rotation.y += rotationSpeed;
-            if (keys['d']) tank.rotation.y -= rotationSpeed;
-
-            // Keep tank on ground
-            tank.position.y = 0;
-
-            // Update projectiles
-            for (let i = projectiles.length - 1; i >= 0; i--) {
-                const p = projectiles[i];
-                p.position.add(p.userData.velocity);
-                // Remove if too far
-                if (p.position.distanceTo(tank.position) > 50) {
-                    scene.remove(p);
-                    projectiles.splice(i, 1);
-                }
-            }
-
-            // Camera follows tank
-            const offset = new THREE.Vector3(0, 7, 10);
-            const rotatedOffset = offset.clone().applyAxisAngle(new THREE.Vector3(0, 1, 0), tank.rotation.y);
-            camera.position.copy(tank.position).add(rotatedOffset);
-            camera.lookAt(tank.position);
-
-            renderer.render(scene, camera);
-        }
-        animate();
-
-        // Handle window resize
-        window.addEventListener('resize', () => {
-            camera.aspect = window.innerWidth / window.innerHeight;
-            camera.updateProjectionMatrix();
-            renderer.setSize(window.innerWidth, window.innerHeight);
-        });
-    </script>
-</body>
-</html>
+        // Movement physics
+        let velocity = new THREE.Vector3(0, 0, 0);
+        const maxSpeed = 0.05
