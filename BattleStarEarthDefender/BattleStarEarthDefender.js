@@ -1,8 +1,10 @@
 // Scene Setup
 const scene = new THREE.Scene();
-const camera = new THREE.OrthographicCamera(window.innerWidth / -200, window.innerWidth / 200, window.innerHeight / 200, window.innerHeight / -200, 0.1, 1000);
-camera.position.set(0, 50, 0);
+const camera = new THREE.OrthographicCamera(window.innerWidth / -50, window.innerWidth / 50, window.innerHeight / 50, window.innerHeight / -50, 0.1, 1000);
+camera.position.set(0, 20, 0); // Lower height for better top-down view
 camera.lookAt(0, 0, 0);
+camera.zoom = 2; // Start with a reasonable zoom level
+camera.updateProjectionMatrix();
 
 const renderer = new THREE.WebGLRenderer();
 renderer.setSize(window.innerWidth, window.innerHeight);
@@ -46,9 +48,9 @@ let lives = 3;
 let bombs = 3;
 let score = 0;
 
-for (let i = 0; i < Math.min(4, 1); i++) { // Start with 1 player, add more later
+for (let i = 0; i < Math.min(4, 1); i++) { // Still 1 player for now
   const mesh = new THREE.Mesh(playerShapes[i].geo, new THREE.MeshBasicMaterial({ color: playerShapes[i].color }));
-  mesh.position.set(i * 2 - 3, 0, 0);
+  mesh.position.set(0, 0, 0); // Center spawn
   scene.add(mesh);
 
   const body = new CANNON.Body({ mass: 1 });
@@ -105,7 +107,7 @@ function shoot(player, dir) {
   mesh.position.copy(player.mesh.position);
   scene.add(mesh);
 
-  const body = new CANNON.Body({ mass: 0.1 });
+  const body = new CANNON.Body({ mass: 0 }); // Massless bullets to avoid recoil
   body.addShape(new CANNON.Sphere(0.2));
   body.position.copy(mesh.position);
   body.velocity.set(dir.x * 10, 0, dir.z * 10);
@@ -159,9 +161,12 @@ function animate(time) {
     b.mesh.position.copy(b.body.position);
   });
 
-  // Camera Zoom
-  const avgSpeed = players.reduce((sum, p) => sum + p.body.velocity.length(), 0) / players.length;
-  camera.zoom = Math.max(1, 3 - avgSpeed * 0.1);
+  // Camera Follow and Zoom
+  const playerPos = players[0].mesh.position; // Follow first player
+  camera.position.set(playerPos.x, 20, playerPos.z); // Keep top-down view
+  camera.lookAt(playerPos.x, 0, playerPos.z);
+  const speed = players[0].body.velocity.length();
+  camera.zoom = Math.max(1.5, Math.min(3, 2.5 - speed * 0.05)); // Smooth zoom based on speed
   camera.updateProjectionMatrix();
 
   // Spawn Enemies
@@ -173,10 +178,10 @@ animate(0);
 
 // Window Resize
 window.addEventListener('resize', () => {
-  camera.left = window.innerWidth / -200;
-  camera.right = window.innerWidth / 200;
-  camera.top = window.innerHeight / 200;
-  camera.bottom = window.innerHeight / -200;
+  camera.left = window.innerWidth / -50;
+  camera.right = window.innerWidth / 50;
+  camera.top = window.innerHeight / 50;
+  camera.bottom = window.innerHeight / -50;
   camera.updateProjectionMatrix();
   renderer.setSize(window.innerWidth, window.innerHeight);
 });
