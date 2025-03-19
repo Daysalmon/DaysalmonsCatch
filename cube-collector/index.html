@@ -35,7 +35,7 @@
         scene.add(stars);
 
         // Space border
-        const borderGeometry = new THREE.BoxGeometry(20, 16, 4);
+        const borderGeometry = new THREE.BoxGeometry(20, 16, 0.1); // Flatter z
         const borderMaterial = new THREE.MeshBasicMaterial({ color: 0x00ffff, wireframe: true });
         const border = new THREE.Mesh(borderGeometry, borderMaterial);
         scene.add(border);
@@ -63,18 +63,18 @@
             });
             const orb = new THREE.Mesh(orbGeometry, orbMaterial);
             const aspect = window.innerWidth / window.innerHeight;
-            const xRange = aspect < 1 ? 8 : 18;
+            const xRange = aspect < 1 ? 8 : 18; // ±4 vertical, ±9 landscape
             orb.position.set(
                 (Math.random() - 0.5) * xRange,
                 (Math.random() - 0.5) * 14,
-                (Math.random() - 0.5) * 2
+                0 // Fixed z-plane
             );
-            orb.userData = { isPenalty, velocity: new THREE.Vector3((Math.random() - 0.5) * 0.02, (Math.random() - 0.5) * 0.02, (Math.random() - 0.5) * 0.01) };
+            orb.userData = { isPenalty, velocity: new THREE.Vector3((Math.random() - 0.5) * 0.02, (Math.random() - 0.5) * 0.02, 0) };
             scene.add(orb);
             orbs.push(orb);
         }
         for (let i = 0; i < 3; i++) addOrb();
-        if (Math.random() < 0.2) addOrb(true); // 20% chance for penalty orb
+        if (Math.random() < 0.2) addOrb(true);
 
         function updateCamera() {
             const aspect = window.innerWidth / window.innerHeight;
@@ -151,15 +151,16 @@
             });
 
             // Glow on score targets
-            if (score >= 100) playerMaterial.color.set(0xff00ff); // Purple
-            else if (score >= 50) playerMaterial.color.set(0x0000ff); // Blue
-            else playerMaterial.color.set(0x00ff00); // Green
+            if (score >= 100) playerMaterial.color.set(0xff00ff);
+            else if (score >= 50) playerMaterial.color.set(0x0000ff);
+            else playerMaterial.color.set(0x00ff00);
 
-            // Orb motion
+            // Orb motion (2D plane)
             orbs.forEach(orb => {
                 orb.position.add(orb.userData.velocity);
-                if (orb.position.x > 10 || orb.position.x < -10) orb.userData.velocity.x *= -1;
-                if (orb.position.y > 8 || orb.position.y < -8) orb.userData.velocity.y *= -1;
+                if (orb.position.x > 9 || orb.position.x < -9) orb.userData.velocity.x *= -1;
+                if (orb.position.y > 7 || orb.position.y < -7) orb.userData.velocity.y *= -1;
+                orb.position.z = 0; // Lock to z=0
             });
 
             // Collision
@@ -179,11 +180,10 @@
                         lastCollectTime = now;
                     }
                     scoreDisplay.textContent = `Score: ${score}`;
-                    addOrb(Math.random() < 0.2); // 20% penalty chance
+                    addOrb(Math.random() < 0.2);
                 }
             }
 
-            // Timed mode
             if (gameMode === 'timed') {
                 timeLeft -= 1 / 60;
                 if (timeLeft <= 0) {
