@@ -23,7 +23,7 @@
         const scene = new THREE.Scene();
         const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
         const renderer = new THREE.WebGLRenderer({ antialias: true });
-        renderer.setClearColor(0x87CEEB, 1); // Match CSS background
+        renderer.setClearColor(0x87CEEB, 1);
         renderer.setSize(window.innerWidth, window.innerHeight);
         document.body.appendChild(renderer.domElement);
 
@@ -33,16 +33,17 @@
 
         // Grid (3x3x3)
         const gridSize = 3;
-        const cellSize = 1;
+        const cellSize = 0.8; // Smaller to add spacing
+        const spacing = 1.2; // Space between cubes
         const cells = [];
         for (let x = 0; x < gridSize; x++) {
             for (let y = 0; y < gridSize; y++) {
                 for (let z = 0; z < gridSize; z++) {
-                    const geometry = new THREE.BoxGeometry(cellSize * 0.9, cellSize * 0.9, cellSize * 0.9);
+                    const geometry = new THREE.BoxGeometry(cellSize, cellSize, cellSize);
                     const edges = new THREE.EdgesGeometry(geometry);
-                    const lineMaterial = new THREE.LineBasicMaterial({ color: 0xFFFFFF, linewidth: 2 });
+                    const lineMaterial = new THREE.LineBasicMaterial({ color: 0xFFFFFF, linewidth: 3 }); // Thicker lines
                     const cube = new THREE.LineSegments(edges, lineMaterial);
-                    cube.position.set(x - 1, y - 1, z - 1);
+                    cube.position.set((x - 1) * spacing, (y - 1) * spacing, (z - 1) * spacing);
                     cube.userData = { x, y, z, occupied: false, mark: null };
                     scene.add(cube);
                     cells.push(cube);
@@ -50,14 +51,9 @@
             }
         }
 
-        // Marks (improved)
-        const xGeometry = new THREE.ExtrudeGeometry(
-            new THREE.Shape().moveTo(-0.4, -0.4).lineTo(0.4, 0.4).moveTo(-0.4, 0.4).lineTo(0.4, -0.4),
-            { depth: 0.2, bevelEnabled: false }
-        ); // 3D X
-        const oGeometry = new THREE.TorusGeometry(0.4, 0.15, 16, 100); // Thicker O
-        const xMaterial = new THREE.MeshBasicMaterial({ color: 0xFF4040 });
-        const oMaterial = new THREE.MeshBasicMaterial({ color: 0x4040FF });
+        // Materials for filled cubes
+        const xMaterial = new THREE.MeshBasicMaterial({ color: 0xFF4040 }); // Red X
+        const oMaterial = new THREE.MeshBasicMaterial({ color: 0x4040FF }); // Blue O
 
         // Game state
         let currentPlayer = 'X';
@@ -69,15 +65,13 @@
         const raycaster = new THREE.Raycaster();
         const mouse = new THREE.Vector2();
 
-        // Winning lines (all 49)
+        // Winning lines
         const winningLines = [];
-        // Rows
         for (let y = 0; y < gridSize; y++) {
             for (let z = 0; z < gridSize; z++) {
                 winningLines.push(cells.slice(y * 9 + z * 3, y * 9 + z * 3 + 3));
             }
         }
-        // Columns
         for (let x = 0; x < gridSize; x++) {
             for (let z = 0; z < gridSize; z++) {
                 const line = [];
@@ -85,7 +79,6 @@
                 winningLines.push(line);
             }
         }
-        // Pillars
         for (let x = 0; x < gridSize; x++) {
             for (let y = 0; y < gridSize; y++) {
                 const line = [];
@@ -93,26 +86,25 @@
                 winningLines.push(line);
             }
         }
-        // Diagonals (simplified for now, full set is complex)
-        winningLines.push([cells[0], cells[13], cells[26]]); // Corner-to-corner
-        winningLines.push([cells[2], cells[13], cells[24]]); // Opposite diagonal
+        winningLines.push([cells[0], cells[13], cells[26]]);
+        winningLines.push([cells[2], cells[13], cells[24]]);
 
         // Camera and rotation
-        camera.position.set(4, 4, 4);
+        camera.position.set(5, 5, 5);
         camera.lookAt(0, 0, 0);
         const gridGroup = new THREE.Group();
         cells.forEach(cell => gridGroup.add(cell));
         scene.add(gridGroup);
 
         // Keyboard controls
-        const rotationSpeed = 0.05;
+        const rotationSpeed = 0.1;
+        let rotationVelocity = { x: 0, y: 0 };
+        const keysPressed = {};
         window.addEventListener('keydown', (event) => {
-            switch (event.key) {
-                case 'ArrowUp': case 'w': gridGroup.rotation.x -= rotationSpeed; break;
-                case 'ArrowDown': case 's': gridGroup.rotation.x += rotationSpeed; break;
-                case 'ArrowLeft': case 'a': gridGroup.rotation.y -= rotationSpeed; break;
-                case 'ArrowRight': case 'd': gridGroup.rotation.y += rotationSpeed; break;
-            }
+            keysPressed[event.key] = true;
+        });
+        window.addEventListener('keyup', (event) => {
+            delete keysPressed[event.key];
         });
 
         // Event listeners
@@ -128,7 +120,7 @@
             mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
             mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
             raycaster.setFromCamera(mouse, camera);
-            const intersects = raycaster.intersectObjects(cells);
+            const intersects = raycaster.intersectObjects(cells, true);
             if (intersects.length > 0) {
                 const cell = intersects[0].object;
                 if (!cell.userData.occupied) {
@@ -140,13 +132,15 @@
         }
 
         function placeMark(cell) {
+            const geometry = new THREE.BoxGeometry(cellSize, cellSize, cellSize);
             const mark = currentPlayer === 'X' ?
-                new THREE.Mesh(xGeometry, xMaterial) :
-                new THREE.Mesh(oGeometry, oMaterial);
+                new THREE.Mesh(geometry, xMaterial) :
+                new THREE.Mesh(geometry, oMaterial);
             mark.position.copy(cell.position);
-            gridGroup.add(mark); // Add to group for rotation
+            gridGroup.add(mark);
             cell.userData.occupied = true;
             cell.userData.mark = currentPlayer;
+            cell.visible = false; // Hide wireframe
             currentPlayer = currentPlayer === 'X' ? 'O' : 'X';
             document.getElementById('info').innerText = `Turn: ${currentPlayer} | Mode: ${gameMode.toUpperCase()}`;
         }
@@ -178,17 +172,26 @@
             cells.forEach(cell => {
                 cell.userData.occupied = false;
                 cell.userData.mark = null;
+                cell.visible = true;
             });
             gridGroup.children = gridGroup.children.filter(obj => cells.includes(obj));
             currentPlayer = 'X';
             gameOver = false;
-            gridGroup.rotation.set(0, 0, 0); // Reset rotation
+            gridGroup.rotation.set(0, 0, 0);
             document.getElementById('info').innerText = `Turn: X | Mode: ${gameMode.toUpperCase()}`;
         }
 
-        // Animation loop
+        // Animation loop with smooth rotation
         function animate() {
             requestAnimationFrame(animate);
+            if (keysPressed['ArrowUp'] || keysPressed['w']) rotationVelocity.x = -rotationSpeed;
+            else if (keysPressed['ArrowDown'] || keysPressed['s']) rotationVelocity.x = rotationSpeed;
+            else rotationVelocity.x *= 0.9; // Dampening
+            if (keysPressed['ArrowLeft'] || keysPressed['a']) rotationVelocity.y = -rotationSpeed;
+            else if (keysPressed['ArrowRight'] || keysPressed['d']) rotationVelocity.y = rotationSpeed;
+            else rotationVelocity.y *= 0.9;
+            gridGroup.rotation.x += rotationVelocity.x;
+            gridGroup.rotation.y += rotationVelocity.y;
             renderer.render(scene, camera);
         }
         animate();
