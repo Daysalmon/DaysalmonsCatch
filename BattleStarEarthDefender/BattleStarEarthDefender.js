@@ -1,9 +1,9 @@
 // Scene Setup
 const scene = new THREE.Scene();
 const camera = new THREE.OrthographicCamera(window.innerWidth / -50, window.innerWidth / 50, window.innerHeight / 50, window.innerHeight / -50, 0.1, 1000);
-camera.position.set(0, 20, 0); // Lower height for better top-down view
+camera.position.set(0, 40, 0); // Higher for broader view
 camera.lookAt(0, 0, 0);
-camera.zoom = 2; // Start with a reasonable zoom level
+camera.zoom = 1.5; // Wider initial zoom
 camera.updateProjectionMatrix();
 
 const renderer = new THREE.WebGLRenderer();
@@ -12,7 +12,7 @@ document.body.appendChild(renderer.domElement);
 
 // Physics World
 const world = new CANNON.World();
-world.gravity.set(0, 0, 0); // No gravity in space
+world.gravity.set(0, 0, 0);
 
 // Background (Space)
 const starGeometry = new THREE.BufferGeometry();
@@ -25,9 +25,13 @@ const starMaterial = new THREE.PointsMaterial({ color: 0xffffff, size: 0.1 });
 const stars = new THREE.Points(starGeometry, starMaterial);
 scene.add(stars);
 
-// Grid
+// Grid and Border
 const grid = new THREE.GridHelper(100, 100, 0x444444, 0x444444);
 scene.add(grid);
+const borderGeometry = new THREE.BoxGeometry(100, 0.1, 100);
+const borderMaterial = new THREE.MeshBasicMaterial({ color: 0xff0000, wireframe: true });
+const border = new THREE.Mesh(borderGeometry, borderMaterial);
+scene.add(border);
 
 // Terrain (Simple Plane)
 const planeGeometry = new THREE.PlaneGeometry(100, 100);
@@ -38,19 +42,19 @@ scene.add(plane);
 
 // Players
 const playerShapes = [
-  { geo: new THREE.BoxGeometry(1, 1, 1), color: 0xff0000 }, // Cube - Red
-  { geo: new THREE.TetrahedronGeometry(0.7), color: 0x00ff00 }, // Tetrahedron - Green
-  { geo: new THREE.SphereGeometry(0.6, 32, 32), color: 0x0000ff }, // Sphere - Blue
-  { geo: new THREE.OctahedronGeometry(0.7), color: 0xffff00 } // Octahedron - Yellow
+  { geo: new THREE.BoxGeometry(1, 1, 1), color: 0xff0000 },
+  { geo: new THREE.TetrahedronGeometry(0.7), color: 0x00ff00 },
+  { geo: new THREE.SphereGeometry(0.6, 32, 32), color: 0x0000ff },
+  { geo: new THREE.OctahedronGeometry(0.7), color: 0xffff00 }
 ];
 const players = [];
 let lives = 3;
 let bombs = 3;
 let score = 0;
 
-for (let i = 0; i < Math.min(4, 1); i++) { // Still 1 player for now
+for (let i = 0; i < Math.min(4, 1); i++) {
   const mesh = new THREE.Mesh(playerShapes[i].geo, new THREE.MeshBasicMaterial({ color: playerShapes[i].color }));
-  mesh.position.set(0, 0, 0); // Center spawn
+  mesh.position.set(0, 0, 0);
   scene.add(mesh);
 
   const body = new CANNON.Body({ mass: 1 });
@@ -107,10 +111,10 @@ function shoot(player, dir) {
   mesh.position.copy(player.mesh.position);
   scene.add(mesh);
 
-  const body = new CANNON.Body({ mass: 0 }); // Massless bullets to avoid recoil
+  const body = new CANNON.Body({ mass: 0 }); // Massless to avoid affecting player
   body.addShape(new CANNON.Sphere(0.2));
   body.position.copy(mesh.position);
-  body.velocity.set(dir.x * 10, 0, dir.z * 10);
+  body.velocity.set(dir.x * 10, 0, dir.z * 10); // Direction matches arrow key
   world.addBody(body);
 
   bullets.push({ mesh, body });
@@ -133,6 +137,31 @@ function handleControls(player) {
   if (keys['ArrowRight']) shoot(player, { x: 1, z: 0 });
 }
 
+// Boundary Check
+function clampPosition(body) {
+  const limit = 50;
+  body.position.x = Math.max(-limit, Math.min(limit, body.position.x));
+  body.position.z = Math.max(-limit, Math.min(limit, body.position.z));
+}
+
+// Collision Detection
+function checkCollisions() {
+  bullets.forEach((bullet, bIndex) => {
+    enemies.forEach((enemy, eIndex) => {
+      const dist = bullet.body.position.distanceTo(enemy.body.position);
+      if (dist < 1.5) { // Rough collision radius
+        scene.remove(enemy.mesh);
+        world.removeBody(enemy.body);
+        enemies.splice(eIndex, 1);
+        scene.remove(bullet.mesh);
+        world.removeBody(bullet.body);
+        bullets.splice(bIndex, 1);
+        score += 10; // Add points for kill
+      }
+    });
+  });
+}
+
 // Game Loop
 let lastTime = 0;
 function animate(time) {
@@ -145,6 +174,7 @@ function animate(time) {
   // Update Players
   players.forEach(p => {
     handleControls(p);
+    clampPosition(p.body); // Keep ship in bounds
     p.mesh.position.copy(p.body.position);
     p.mesh.quaternion.copy(p.body.quaternion);
   });
@@ -152,6 +182,7 @@ function animate(time) {
   // Update Enemies
   enemies.forEach(e => {
     e.behavior(e.mesh, e.body, time * 0.001);
+    clampPosition(e.body); // Keep enemies in bounds too
     e.mesh.position.copy(e.body.position);
     e.mesh.quaternion.copy(e.body.quaternion);
   });
@@ -159,14 +190,22 @@ function animate(time) {
   // Update Bullets
   bullets.forEach(b => {
     b.mesh.position.copy(b.body.position);
+    if (b.body.position.length() > 60) { // Remove bullets that leave bounds
+      scene.remove(b.mesh);
+      world.removeBody(b.body);
+      bullets.splice(bullets.indexOf(b), 1);
+    }
   });
 
+  // Check Collisions
+  checkCollisions();
+
   // Camera Follow and Zoom
-  const playerPos = players[0].mesh.position; // Follow first player
-  camera.position.set(playerPos.x, 20, playerPos.z); // Keep top-down view
+  const playerPos = players[0].mesh.position;
+  camera.position.set(playerPos.x, 40, playerPos.z);
   camera.lookAt(playerPos.x, 0, playerPos.z);
   const speed = players[0].body.velocity.length();
-  camera.zoom = Math.max(1.5, Math.min(3, 2.5 - speed * 0.05)); // Smooth zoom based on speed
+  camera.zoom = Math.max(1, Math.min(1.5, 1.5 - speed * 0.02)); // Limit zoom to keep border in view
   camera.updateProjectionMatrix();
 
   // Spawn Enemies
