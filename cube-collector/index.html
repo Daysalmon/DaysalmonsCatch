@@ -3,13 +3,19 @@
 <head>
     <title>Cube Collector</title>
     <style>
-        body { margin: 0; overflow: hidden; touch-action: none; }
+        body { margin: 0; overflow: hidden; touch-action: none; background: #000; }
         #score { position: absolute; top: 10px; left: 10px; color: white; font-family: Arial; font-size: 20px; z-index: 1; }
+        #modeSelect { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); color: white; font-family: Arial; font-size: 24px; z-index: 1; text-align: center; }
         canvas { width: 100%; height: 100%; }
     </style>
 </head>
 <body>
     <div id="score">Score: 0</div>
+    <div id="modeSelect">
+        <p>Select Mode:</p>
+        <button onclick="startGame('free')">Free Play</button>
+        <button onclick="startGame('timed')">Timed (60s)</button>
+    </div>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r134/three.min.js"></script>
     <script>
         const scene = new THREE.Scene();
@@ -18,40 +24,62 @@
         renderer.setSize(window.innerWidth, window.innerHeight);
         document.body.appendChild(renderer.domElement);
 
+        // Starry background
+        const starGeometry = new THREE.BufferGeometry();
+        const starCount = 500;
+        const starPositions = new Float32Array(starCount * 3);
+        for (let i = 0; i < starCount * 3; i++) starPositions[i] = (Math.random() - 0.5) * 50;
+        starGeometry.setAttribute('position', new THREE.BufferAttribute(starPositions, 3));
+        const starMaterial = new THREE.PointsMaterial({ color: 0xffffff, size: 0.1 });
+        const stars = new THREE.Points(starGeometry, starMaterial);
+        scene.add(stars);
+
+        // Space border
+        const borderGeometry = new THREE.BoxGeometry(20, 16, 4);
+        const borderMaterial = new THREE.MeshBasicMaterial({ color: 0x00ffff, wireframe: true });
+        const border = new THREE.Mesh(borderGeometry, borderMaterial);
+        scene.add(border);
+
+        // Hollow cube
         const playerGeometry = new THREE.BoxGeometry(1, 1, 1);
-        const playerMaterial = new THREE.MeshBasicMaterial({ color: 0x00ff00 });
+        const playerMaterial = new THREE.MeshBasicMaterial({ color: 0x00ff00, wireframe: true });
         const player = new THREE.Mesh(playerGeometry, playerMaterial);
         player.position.set(0, 0, 0);
         scene.add(player);
 
-        const spheres = [];
-        let score = 0;
+        // Dust trail
+        const dustParticles = [];
+        const dustGeometry = new THREE.SphereGeometry(0.05, 8, 8);
+        const dustMaterial = new THREE.MeshBasicMaterial({ color: 0xaaaaaa });
+
+        const orbs = [];
+        let score = 0, lastCollectTime = 0, combo = 0;
         const scoreDisplay = document.getElementById('score');
-        function addSphere() {
-            const sphereGeometry = new THREE.SphereGeometry(0.5, 32, 32);
-            const sphereMaterial = new THREE.MeshBasicMaterial({ color: 0xff0000 });
-            const sphere = new THREE.Mesh(sphereGeometry, sphereMaterial);
+        function addOrb(isPenalty = false) {
+            const orbGeometry = new THREE.SphereGeometry(0.5, 32, 32);
+            const orbMaterial = new THREE.MeshBasicMaterial({
+                color: isPenalty ? 0x000000 : Math.random() * 0xffffff,
+                emissive: isPenalty ? 0x000000 : 0x333333
+            });
+            const orb = new THREE.Mesh(orbGeometry, orbMaterial);
             const aspect = window.innerWidth / window.innerHeight;
-            const xRange = aspect < 1 ? 8 : 18; // ±4 vertical, ±9 landscape
-            sphere.position.set(
+            const xRange = aspect < 1 ? 8 : 18;
+            orb.position.set(
                 (Math.random() - 0.5) * xRange,
-                (Math.random() - 0.5) * 14, // y: ±7
-                (Math.random() - 0.5) * 2  // z: -1 to 1
+                (Math.random() - 0.5) * 14,
+                (Math.random() - 0.5) * 2
             );
-            scene.add(sphere);
-            spheres.push(sphere);
+            orb.userData = { isPenalty, velocity: new THREE.Vector3((Math.random() - 0.5) * 0.02, (Math.random() - 0.5) * 0.02, (Math.random() - 0.5) * 0.01) };
+            scene.add(orb);
+            orbs.push(orb);
         }
-        for (let i = 0; i < 3; i++) addSphere();
+        for (let i = 0; i < 3; i++) addOrb();
+        if (Math.random() < 0.2) addOrb(true); // 20% chance for penalty orb
 
         function updateCamera() {
             const aspect = window.innerWidth / window.innerHeight;
-            if (aspect < 1) { // Vertical
-                camera.fov = 45; // Narrower (was 50)
-                camera.position.set(0, 5, 30); // Farther (was 25)
-            } else { // Landscape
-                camera.fov = 75;
-                camera.position.set(0, 5, 15);
-            }
+            if (aspect < 1) { camera.fov = 45; camera.position.set(0, 5, 30); }
+            else { camera.fov = 75; camera.position.set(0, 5, 15); }
             camera.aspect = aspect;
             camera.updateProjectionMatrix();
             camera.lookAt(0, 0, 0);
@@ -59,12 +87,11 @@
         updateCamera();
 
         const keys = {};
-        let touchStartX = null, touchStartY = null;
-        let moveX = 0, moveY = 0;
+        let touchStartX = null, touchStartY = null, moveX = 0, moveY = 0;
+        let gameMode = null, timeLeft = 60;
 
         document.addEventListener('keydown', (e) => keys[e.key] = true);
         document.addEventListener('keyup', (e) => keys[e.key] = false);
-
         document.addEventListener('touchstart', (e) => {
             const touch = e.touches[0];
             touchStartX = touch.clientX;
@@ -76,56 +103,99 @@
             const deltaX = touch.clientX - touchStartX;
             const deltaY = touch.clientY - touchStartY;
             const aspect = window.innerWidth / window.innerHeight;
-            const speedMultiplier = aspect < 1 ? 0.07 : 0.1; // Vertical: 0.07, Landscape: 0.1
+            const speedMultiplier = aspect < 1 ? 0.07 : 0.1;
             moveX = deltaX * speedMultiplier;
             moveY = -deltaY * speedMultiplier;
             touchStartX = touch.clientX;
             touchStartY = touch.clientY;
             e.preventDefault();
         }, { passive: false });
-        document.addEventListener('touchend', () => {
-            moveX = 0;
-            moveY = 0;
-            touchStartX = null;
-            touchStartY = null;
-        });
+        document.addEventListener('touchend', () => { moveX = 0; moveY = 0; touchStartX = null; touchStartY = null; });
+
+        function startGame(mode) {
+            gameMode = mode;
+            document.getElementById('modeSelect').style.display = 'none';
+            if (mode === 'timed') timeLeft = 60;
+            animate();
+        }
 
         function animate() {
+            if (!gameMode) return;
             requestAnimationFrame(animate);
             const speed = 0.1;
+            const now = Date.now();
 
             if (keys['ArrowUp']) player.position.y += speed;
             if (keys['ArrowDown']) player.position.y -= speed;
             if (keys['ArrowLeft']) player.position.x -= speed;
             if (keys['ArrowRight']) player.position.x += speed;
-
             player.position.x += moveX;
             player.position.y += moveY;
-
             player.position.x = Math.max(-10, Math.min(10, player.position.x));
             player.position.y = Math.max(-8, Math.min(8, player.position.y));
 
-            player.rotation.x += 0.01;
-            player.rotation.y += 0.01;
+            // Pulse cube
+            player.scale.set(1 + 0.1 * Math.sin(now * 0.005), 1 + 0.1 * Math.sin(now * 0.005), 1 + 0.1 * Math.sin(now * 0.005));
 
-            spheres.forEach(sphere => {
-                sphere.position.x += Math.sin(Date.now() * 0.001) * 0.01;
+            // Dust trail
+            if (dustParticles.length < 10) {
+                const dust = new THREE.Mesh(dustGeometry, dustMaterial);
+                dust.position.copy(player.position);
+                scene.add(dust);
+                dustParticles.push({ mesh: dust, life: 30 });
+            }
+            dustParticles.forEach((p, i) => {
+                p.life--;
+                p.mesh.position.z -= 0.05;
+                if (p.life <= 0) { scene.remove(p.mesh); dustParticles.splice(i, 1); }
             });
 
-            for (let i = spheres.length - 1; i >= 0; i--) {
-                const distance = player.position.distanceTo(spheres[i].position);
+            // Glow on score targets
+            if (score >= 100) playerMaterial.color.set(0xff00ff); // Purple
+            else if (score >= 50) playerMaterial.color.set(0x0000ff); // Blue
+            else playerMaterial.color.set(0x00ff00); // Green
+
+            // Orb motion
+            orbs.forEach(orb => {
+                orb.position.add(orb.userData.velocity);
+                if (orb.position.x > 10 || orb.position.x < -10) orb.userData.velocity.x *= -1;
+                if (orb.position.y > 8 || orb.position.y < -8) orb.userData.velocity.y *= -1;
+            });
+
+            // Collision
+            for (let i = orbs.length - 1; i >= 0; i--) {
+                const distance = player.position.distanceTo(orbs[i].position);
                 if (distance < 1.5) {
-                    scene.remove(spheres[i]);
-                    spheres.splice(i, 1);
-                    score += 10;
+                    scene.remove(orbs[i]);
+                    const wasPenalty = orbs[i].userData.isPenalty;
+                    orbs.splice(i, 1);
+                    if (wasPenalty) {
+                        score -= 20;
+                        combo = 0;
+                    } else {
+                        const timeSinceLast = (now - lastCollectTime) / 1000;
+                        score += timeSinceLast < 2 ? 10 + combo * 5 : 10;
+                        combo = timeSinceLast < 2 ? combo + 1 : 0;
+                        lastCollectTime = now;
+                    }
                     scoreDisplay.textContent = `Score: ${score}`;
-                    addSphere();
+                    addOrb(Math.random() < 0.2); // 20% penalty chance
                 }
+            }
+
+            // Timed mode
+            if (gameMode === 'timed') {
+                timeLeft -= 1 / 60;
+                if (timeLeft <= 0) {
+                    alert(`Game Over! Score: ${score}`);
+                    gameMode = null;
+                    document.getElementById('modeSelect').style.display = 'block';
+                }
+                scoreDisplay.textContent = `Score: ${score} | Time: ${Math.ceil(timeLeft)}s`;
             }
 
             renderer.render(scene, camera);
         }
-        animate();
 
         window.addEventListener('resize', () => {
             renderer.setSize(window.innerWidth, window.innerHeight);
