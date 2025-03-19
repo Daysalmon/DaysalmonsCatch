@@ -33,15 +33,15 @@
 
         // Grid (3x3x3)
         const gridSize = 3;
-        const cellSize = 0.8; // Smaller to add spacing
-        const spacing = 1.2; // Space between cubes
+        const cellSize = 0.7; // Smaller for more spacing
+        const spacing = 1.5; // Increased spacing
         const cells = [];
         for (let x = 0; x < gridSize; x++) {
             for (let y = 0; y < gridSize; y++) {
                 for (let z = 0; z < gridSize; z++) {
                     const geometry = new THREE.BoxGeometry(cellSize, cellSize, cellSize);
                     const edges = new THREE.EdgesGeometry(geometry);
-                    const lineMaterial = new THREE.LineBasicMaterial({ color: 0xFFFFFF, linewidth: 3 }); // Thicker lines
+                    const lineMaterial = new THREE.LineBasicMaterial({ color: 0xFFFFFF, linewidth: 3 });
                     const cube = new THREE.LineSegments(edges, lineMaterial);
                     cube.position.set((x - 1) * spacing, (y - 1) * spacing, (z - 1) * spacing);
                     cube.userData = { x, y, z, occupied: false, mark: null };
@@ -52,8 +52,8 @@
         }
 
         // Materials for filled cubes
-        const xMaterial = new THREE.MeshBasicMaterial({ color: 0xFF4040 }); // Red X
-        const oMaterial = new THREE.MeshBasicMaterial({ color: 0x4040FF }); // Blue O
+        const xMaterial = new THREE.MeshBasicMaterial({ color: 0xFF4040 });
+        const oMaterial = new THREE.MeshBasicMaterial({ color: 0x4040FF });
 
         // Game state
         let currentPlayer = 'X';
@@ -90,7 +90,7 @@
         winningLines.push([cells[2], cells[13], cells[24]]);
 
         // Camera and rotation
-        camera.position.set(5, 5, 5);
+        camera.position.set(6, 6, 6); // Farther out for better view
         camera.lookAt(0, 0, 0);
         const gridGroup = new THREE.Group();
         cells.forEach(cell => gridGroup.add(cell));
@@ -126,7 +126,7 @@
                 if (!cell.userData.occupied) {
                     placeMark(cell);
                     checkWin();
-                    if (!gameOver && gameMode === 'ai' && currentPlayer === 'O') setTimeout(aiMove, 500);
+                    if (!gameMode && gameMode === 'ai' && currentPlayer === 'O') setTimeout(aiMove, 500);
                 }
             }
         }
@@ -181,17 +181,31 @@
             document.getElementById('info').innerText = `Turn: X | Mode: ${gameMode.toUpperCase()}`;
         }
 
-        // Animation loop with smooth rotation
+        // Animation loop with occlusion
         function animate() {
             requestAnimationFrame(animate);
+
+            // Rotation
             if (keysPressed['ArrowUp'] || keysPressed['w']) rotationVelocity.x = -rotationSpeed;
             else if (keysPressed['ArrowDown'] || keysPressed['s']) rotationVelocity.x = rotationSpeed;
-            else rotationVelocity.x *= 0.9; // Dampening
+            else rotationVelocity.x *= 0.9;
             if (keysPressed['ArrowLeft'] || keysPressed['a']) rotationVelocity.y = -rotationSpeed;
             else if (keysPressed['ArrowRight'] || keysPressed['d']) rotationVelocity.y = rotationSpeed;
             else rotationVelocity.y *= 0.9;
             gridGroup.rotation.x += rotationVelocity.x;
             gridGroup.rotation.y += rotationVelocity.y;
+
+            // Hide occluded wireframes
+            cells.forEach(cell => {
+                if (!cell.userData.occupied) {
+                    const vector = cell.position.clone().applyMatrix4(gridGroup.matrixWorld);
+                    const direction = vector.sub(camera.position).normalize();
+                    raycaster.set(camera.position, direction);
+                    const intersects = raycaster.intersectObjects(gridGroup.children.filter(obj => obj !== cell && obj instanceof THREE.Mesh), true);
+                    cell.visible = intersects.length === 0 || intersects[0].distance > vector.distanceTo(camera.position);
+                }
+            });
+
             renderer.render(scene, camera);
         }
         animate();
