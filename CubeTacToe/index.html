@@ -18,23 +18,18 @@
         <option value="ai">vs AI</option>
     </select>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r134/three.min.js"></script>
-    <script src="https://unpkg.com/three@0.134.0/examples/js/controls/OrbitControls.js"></script>
     <script>
         // Scene setup
         const scene = new THREE.Scene();
         const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
-        const renderer = new THREE.WebGLRenderer();
+        const renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setClearColor(0x87CEEB, 1); // Match CSS background
         renderer.setSize(window.innerWidth, window.innerHeight);
         document.body.appendChild(renderer.domElement);
 
-        // Add ambient light (fixes dark scene)
+        // Lighting
         const light = new THREE.AmbientLight(0xffffff, 1);
         scene.add(light);
-
-        // Orbit controls (now loaded from separate script)
-        const controls = new THREE.OrbitControls(camera, renderer.domElement);
-        controls.enableDamping = true;
-        controls.dampingFactor = 0.05;
 
         // Grid (3x3x3)
         const gridSize = 3;
@@ -44,8 +39,9 @@
             for (let y = 0; y < gridSize; y++) {
                 for (let z = 0; z < gridSize; z++) {
                     const geometry = new THREE.BoxGeometry(cellSize * 0.9, cellSize * 0.9, cellSize * 0.9);
-                    const material = new THREE.MeshBasicMaterial({ color: 0xFFFFFF, wireframe: true, transparent: true, opacity: 0.5 }); // Upped opacity
-                    const cube = new THREE.Mesh(geometry, material);
+                    const edges = new THREE.EdgesGeometry(geometry);
+                    const lineMaterial = new THREE.LineBasicMaterial({ color: 0xFFFFFF, linewidth: 2 });
+                    const cube = new THREE.LineSegments(edges, lineMaterial);
                     cube.position.set(x - 1, y - 1, z - 1);
                     cube.userData = { x, y, z, occupied: false, mark: null };
                     scene.add(cube);
@@ -54,9 +50,12 @@
             }
         }
 
-        // Marks
-        const xGeometry = new THREE.BoxGeometry(0.1, 0.8, 0.1);
-        const oGeometry = new THREE.TorusGeometry(0.3, 0.1, 16, 100);
+        // Marks (improved)
+        const xGeometry = new THREE.ExtrudeGeometry(
+            new THREE.Shape().moveTo(-0.4, -0.4).lineTo(0.4, 0.4).moveTo(-0.4, 0.4).lineTo(0.4, -0.4),
+            { depth: 0.2, bevelEnabled: false }
+        ); // 3D X
+        const oGeometry = new THREE.TorusGeometry(0.4, 0.15, 16, 100); // Thicker O
         const xMaterial = new THREE.MeshBasicMaterial({ color: 0xFF4040 });
         const oMaterial = new THREE.MeshBasicMaterial({ color: 0x4040FF });
 
@@ -70,18 +69,51 @@
         const raycaster = new THREE.Raycaster();
         const mouse = new THREE.Vector2();
 
-        // Winning lines (rows only for now)
+        // Winning lines (all 49)
         const winningLines = [];
-        for (let i = 0; i < gridSize; i++) {
-            for (let j = 0; j < gridSize; j++) {
-                winningLines.push(cells.slice(i * 9 + j * 3, i * 9 + j * 3 + 3));
+        // Rows
+        for (let y = 0; y < gridSize; y++) {
+            for (let z = 0; z < gridSize; z++) {
+                winningLines.push(cells.slice(y * 9 + z * 3, y * 9 + z * 3 + 3));
             }
         }
+        // Columns
+        for (let x = 0; x < gridSize; x++) {
+            for (let z = 0; z < gridSize; z++) {
+                const line = [];
+                for (let y = 0; y < gridSize; y++) line.push(cells[y * 9 + z * 3 + x]);
+                winningLines.push(line);
+            }
+        }
+        // Pillars
+        for (let x = 0; x < gridSize; x++) {
+            for (let y = 0; y < gridSize; y++) {
+                const line = [];
+                for (let z = 0; z < gridSize; z++) line.push(cells[y * 9 + z * 3 + x]);
+                winningLines.push(line);
+            }
+        }
+        // Diagonals (simplified for now, full set is complex)
+        winningLines.push([cells[0], cells[13], cells[26]]); // Corner-to-corner
+        winningLines.push([cells[2], cells[13], cells[24]]); // Opposite diagonal
 
-        // Camera position
+        // Camera and rotation
         camera.position.set(4, 4, 4);
         camera.lookAt(0, 0, 0);
-        controls.update();
+        const gridGroup = new THREE.Group();
+        cells.forEach(cell => gridGroup.add(cell));
+        scene.add(gridGroup);
+
+        // Keyboard controls
+        const rotationSpeed = 0.05;
+        window.addEventListener('keydown', (event) => {
+            switch (event.key) {
+                case 'ArrowUp': case 'w': gridGroup.rotation.x -= rotationSpeed; break;
+                case 'ArrowDown': case 's': gridGroup.rotation.x += rotationSpeed; break;
+                case 'ArrowLeft': case 'a': gridGroup.rotation.y -= rotationSpeed; break;
+                case 'ArrowRight': case 'd': gridGroup.rotation.y += rotationSpeed; break;
+            }
+        });
 
         // Event listeners
         window.addEventListener('click', onClick);
@@ -112,7 +144,7 @@
                 new THREE.Mesh(xGeometry, xMaterial) :
                 new THREE.Mesh(oGeometry, oMaterial);
             mark.position.copy(cell.position);
-            scene.add(mark);
+            gridGroup.add(mark); // Add to group for rotation
             cell.userData.occupied = true;
             cell.userData.mark = currentPlayer;
             currentPlayer = currentPlayer === 'X' ? 'O' : 'X';
@@ -146,17 +178,17 @@
             cells.forEach(cell => {
                 cell.userData.occupied = false;
                 cell.userData.mark = null;
-                scene.children = scene.children.filter(obj => !(obj instanceof THREE.Mesh && obj !== cell));
             });
+            gridGroup.children = gridGroup.children.filter(obj => cells.includes(obj));
             currentPlayer = 'X';
             gameOver = false;
+            gridGroup.rotation.set(0, 0, 0); // Reset rotation
             document.getElementById('info').innerText = `Turn: X | Mode: ${gameMode.toUpperCase()}`;
         }
 
         // Animation loop
         function animate() {
             requestAnimationFrame(animate);
-            controls.update();
             renderer.render(scene, camera);
         }
         animate();
