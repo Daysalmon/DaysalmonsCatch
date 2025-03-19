@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CubeTacToe</title>
+    <style>
+        body { margin: 0; overflow: hidden; background: #87CEEB; }
+        canvas { display: block; }
+        #info { position: absolute; top: 10px; left: 10px; color: white; font-family: Arial; }
+        #mode { position: absolute; top: 40px; left: 10px; }
+    </style>
+</head>
+<body>
+    <div id="info">Turn: X | Mode: PvP</div>
+    <select id="mode">
+        <option value="pvp">PvP</option>
+        <option value="ai">vs AI</option>
+    </select>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r134/three.min.js"></script>
+    <script>
+        // Scene setup
+        const scene = new THREE.Scene();
+        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+        const renderer = new THREE.WebGLRenderer();
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        document.body.appendChild(renderer.domElement);
+
+        // Orbit controls
+        const controls = new THREE.OrbitControls(camera, renderer.domElement);
+        controls.enableDamping = true;
+        controls.dampingFactor = 0.05;
+
+        // Grid (3x3x3)
+        const gridSize = 3;
+        const cellSize = 1;
+        const cells = [];
+        for (let x = 0; x < gridSize; x++) {
+            for (let y = 0; y < gridSize; y++) {
+                for (let z = 0; z < gridSize; z++) {
+                    const geometry = new THREE.BoxGeometry(cellSize * 0.9, cellSize * 0.9, cellSize * 0.9);
+                    const material = new THREE.MeshBasicMaterial({ color: 0xFFFFFF, wireframe: true, transparent: true, opacity: 0.2 });
+                    const cube = new THREE.Mesh(geometry, material);
+                    cube.position.set(x - 1, y - 1, z - 1);
+                    cube.userData = { x, y, z, occupied: false, mark: null };
+                    scene.add(cube);
+                    cells.push(cube);
+                }
+            }
+        }
+
+        // Marks
+        const xGeometry = new THREE.BoxGeometry(0.1, 0.8, 0.1); // Simple X as crossed lines
+        const oGeometry = new THREE.TorusGeometry(0.3, 0.1, 16, 100); // O as a ring
+        const xMaterial = new THREE.MeshBasicMaterial({ color: 0xFF4040 }); // Red X
+        const oMaterial = new THREE.MeshBasicMaterial({ color: 0x4040FF }); // Blue O
+
+        // Game state
+        let currentPlayer = 'X';
+        let gameOver = false;
+        const modeSelect = document.getElementById('mode');
+        let gameMode = modeSelect.value;
+
+        // Raycaster for clicking
+        const raycaster = new THREE.Raycaster();
+        const mouse = new THREE.Vector2();
+
+        // Winning lines (simplified: rows only for now, full 49 later)
+        const winningLines = [];
+        for (let i = 0; i < gridSize; i++) {
+            for (let j = 0; j < gridSize; j++) {
+                winningLines.push(cells.slice(i * 9 + j * 3, i * 9 + j * 3 + 3)); // Rows
+            }
+        }
+
+        // Camera position
+        camera.position.set(3, 3, 3);
+        controls.update();
+
+        // Event listeners
+        window.addEventListener('click', onClick);
+        modeSelect.addEventListener('change', () => {
+            gameMode = modeSelect.value;
+            resetGame();
+        });
+
+        function onClick(event) {
+            if (gameOver) return;
+            mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+            mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+            raycaster.setFromCamera(mouse, camera);
+            const intersects = raycaster.intersectObjects(cells);
+            if (intersects.length > 0) {
+                const cell = intersects[0].object;
+                if (!cell.userData.occupied) {
+                    placeMark(cell);
+                    checkWin();
+                    if (!gameOver && gameMode === 'ai' && currentPlayer === 'O') aiMove();
+                }
+            }
+        }
+
+        function placeMark(cell) {
+            const mark = currentPlayer === 'X' ?
+                new THREE.Mesh(xGeometry, xMaterial) :
+                new THREE.Mesh(oGeometry, oMaterial);
+            mark.position.copy(cell.position);
+            scene.add(mark);
+            cell.userData.occupied = true;
+            cell.userData.mark = currentPlayer;
+            currentPlayer = currentPlayer === 'X' ? 'O' : 'X';
+            document.getElementById('info').innerText = `Turn: ${currentPlayer} | Mode: ${gameMode.toUpperCase()}`;
+        }
+
+        function aiMove() {
+            const emptyCells = cells.filter(cell => !cell.userData.occupied);
+            if (emptyCells.length > 0) {
+                const randomCell = emptyCells[Math.floor(Math.random() * emptyCells.length)];
+                placeMark(randomCell);
+                checkWin();
+            }
+        }
+
+        function checkWin() {
+            for (const line of winningLines) {
+                if (line.every(cell => cell.userData.occupied && cell.userData.mark === line[0].userData.mark)) {
+                    document.getElementById('info').innerText = `${line[0].userData.mark} Wins!`;
+                    gameOver = true;
+                    return;
+                }
+            }
+            if (cells.every(cell => cell.userData.occupied)) {
+                document.getElementById('info').innerText = "Tie!";
+                gameOver = true;
+            }
+        }
+
+        function resetGame() {
+            cells.forEach(cell => {
+                cell.userData.occupied = false;
+                cell.userData.mark = null;
+                scene.children = scene.children.filter(obj => !(obj instanceof THREE.Mesh && obj !== cell));
+            });
+            currentPlayer = 'X';
+            gameOver = false;
+            document.getElementById('info').innerText = `Turn: X | Mode: ${gameMode.toUpperCase()}`;
+        }
+
+        // Animation loop
+        function animate() {
+            requestAnimationFrame(animate);
+            controls.update();
+            renderer.render(scene, camera);
+        }
+        animate();
+
+        // Resize handler
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+    </script>
+</body>
+</html>
