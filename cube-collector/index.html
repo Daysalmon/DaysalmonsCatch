@@ -6,6 +6,7 @@
         body { margin: 0; overflow: hidden; touch-action: none; background: #000; }
         #score { position: absolute; top: 10px; left: 10px; color: white; font-family: Arial; font-size: 20px; z-index: 1; }
         #modeSelect { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); color: white; font-family: Arial; font-size: 24px; z-index: 1; text-align: center; }
+        #comboIndicator { position: absolute; color: yellow; font-family: Arial; font-size: 16px; z-index: 1; display: none; }
         canvas { width: 100%; height: 100%; }
     </style>
 </head>
@@ -15,7 +16,9 @@
         <p>Select Mode:</p>
         <button onclick="startGame('free')">Free Play</button>
         <button onclick="startGame('timed')">Timed (60s)</button>
+        <button onclick="startGame('endurance')">Endurance</button>
     </div>
+    <div id="comboIndicator"></div>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r134/three.min.js"></script>
     <script>
         const scene = new THREE.Scene();
@@ -24,7 +27,6 @@
         renderer.setSize(window.innerWidth, window.innerHeight);
         document.body.appendChild(renderer.domElement);
 
-        // Starry background
         const starGeometry = new THREE.BufferGeometry();
         const starCount = 500;
         const starPositions = new Float32Array(starCount * 3);
@@ -34,47 +36,50 @@
         const stars = new THREE.Points(starGeometry, starMaterial);
         scene.add(stars);
 
-        // Space border
-        const borderGeometry = new THREE.BoxGeometry(20, 16, 0.1); // Flatter z
+        const borderGeometry = new THREE.BoxGeometry(20, 16, 0.1);
         const borderMaterial = new THREE.MeshBasicMaterial({ color: 0x00ffff, wireframe: true });
         const border = new THREE.Mesh(borderGeometry, borderMaterial);
         scene.add(border);
 
-        // Hollow cube
         const playerGeometry = new THREE.BoxGeometry(1, 1, 1);
         const playerMaterial = new THREE.MeshBasicMaterial({ color: 0x00ff00, wireframe: true });
         const player = new THREE.Mesh(playerGeometry, playerMaterial);
         player.position.set(0, 0, 0);
         scene.add(player);
 
-        // Dust trail
         const dustParticles = [];
         const dustGeometry = new THREE.SphereGeometry(0.05, 8, 8);
         const dustMaterial = new THREE.MeshBasicMaterial({ color: 0xaaaaaa });
 
         const orbs = [];
-        let score = 0, lastCollectTime = 0, combo = 0;
+        let score = 0, lastCollectTime = 0, combo = 0, penaltyChance = 0.2;
+        let dashCooldown = 0, dashDuration = 0;
         const scoreDisplay = document.getElementById('score');
+        const comboIndicator = document.getElementById('comboIndicator');
         function addOrb(isPenalty = false) {
             const orbGeometry = new THREE.SphereGeometry(0.5, 32, 32);
             const orbMaterial = new THREE.MeshBasicMaterial({
-                color: isPenalty ? 0x000000 : Math.random() * 0xffffff,
-                emissive: isPenalty ? 0x000000 : 0x333333
+                color: isPenalty ? 0x666666 : Math.random() * 0xffffff,
+                emissive: isPenalty ? 0xff0000 : 0x333333
             });
             const orb = new THREE.Mesh(orbGeometry, orbMaterial);
             const aspect = window.innerWidth / window.innerHeight;
-            const xRange = aspect < 1 ? 8 : 18; // ±4 vertical, ±9 landscape
+            const xRange = aspect < 1 ? 8 : 18;
             orb.position.set(
                 (Math.random() - 0.5) * xRange,
                 (Math.random() - 0.5) * 14,
-                0 // Fixed z-plane
+                0
             );
-            orb.userData = { isPenalty, velocity: new THREE.Vector3((Math.random() - 0.5) * 0.02, (Math.random() - 0.5) * 0.02, 0) };
+            orb.userData = { 
+                isPenalty, 
+                velocity: new THREE.Vector3((Math.random() - 0.5) * 0.02, (Math.random() - 0.5) * 0.02, 0),
+                life: isPenalty ? 300 : Infinity // 5s at 60fps
+            };
             scene.add(orb);
             orbs.push(orb);
         }
         for (let i = 0; i < 3; i++) addOrb();
-        if (Math.random() < 0.2) addOrb(true);
+        if (Math.random() < penaltyChance) addOrb(true);
 
         function updateCamera() {
             const aspect = window.innerWidth / window.innerHeight;
@@ -116,28 +121,42 @@
             gameMode = mode;
             document.getElementById('modeSelect').style.display = 'none';
             if (mode === 'timed') timeLeft = 60;
+            if (mode === 'endurance') penaltyChance = 0.2;
             animate();
+        }
+
+        function showCombo(points, x, y) {
+            comboIndicator.textContent = `+${points}`;
+            comboIndicator.style.left = `${x + window.innerWidth / 2}px`;
+            comboIndicator.style.top = `${y + window.innerHeight / 2}px`;
+            comboIndicator.style.display = 'block';
+            setTimeout(() => comboIndicator.style.display = 'none', 500);
         }
 
         function animate() {
             if (!gameMode) return;
             requestAnimationFrame(animate);
-            const speed = 0.1;
+            const speed = dashDuration > 0 ? 0.5 : 0.1; // Dash speed
             const now = Date.now();
 
             if (keys['ArrowUp']) player.position.y += speed;
             if (keys['ArrowDown']) player.position.y -= speed;
             if (keys['ArrowLeft']) player.position.x -= speed;
             if (keys['ArrowRight']) player.position.x += speed;
+            if (keys['Space'] && dashCooldown <= 0) {
+                dashDuration = 30; // 0.5s at 60fps
+                dashCooldown = 120; // 2s cooldown
+            }
             player.position.x += moveX;
             player.position.y += moveY;
             player.position.x = Math.max(-10, Math.min(10, player.position.x));
             player.position.y = Math.max(-8, Math.min(8, player.position.y));
 
-            // Pulse cube
+            dashDuration = Math.max(0, dashDuration - 1);
+            dashCooldown = Math.max(0, dashCooldown - 1);
+
             player.scale.set(1 + 0.1 * Math.sin(now * 0.005), 1 + 0.1 * Math.sin(now * 0.005), 1 + 0.1 * Math.sin(now * 0.005));
 
-            // Dust trail
             if (dustParticles.length < 10) {
                 const dust = new THREE.Mesh(dustGeometry, dustMaterial);
                 dust.position.copy(player.position);
@@ -150,37 +169,45 @@
                 if (p.life <= 0) { scene.remove(p.mesh); dustParticles.splice(i, 1); }
             });
 
-            // Glow on score targets
             if (score >= 100) playerMaterial.color.set(0xff00ff);
             else if (score >= 50) playerMaterial.color.set(0x0000ff);
             else playerMaterial.color.set(0x00ff00);
 
-            // Orb motion (2D plane)
             orbs.forEach(orb => {
                 orb.position.add(orb.userData.velocity);
                 if (orb.position.x > 9 || orb.position.x < -9) orb.userData.velocity.x *= -1;
                 if (orb.position.y > 7 || orb.position.y < -7) orb.userData.velocity.y *= -1;
-                orb.position.z = 0; // Lock to z=0
+                orb.position.z = 0;
+                if (orb.userData.isPenalty) {
+                    orb.userData.life--;
+                    if (orb.userData.life <= 0) {
+                        scene.remove(orb);
+                        orbs.splice(orbs.indexOf(orb), 1);
+                    }
+                }
             });
 
-            // Collision
             for (let i = orbs.length - 1; i >= 0; i--) {
                 const distance = player.position.distanceTo(orbs[i].position);
                 if (distance < 1.5) {
                     scene.remove(orbs[i]);
                     const wasPenalty = orbs[i].userData.isPenalty;
+                    const orbX = orbs[i].position.x, orbY = orbs[i].position.y;
                     orbs.splice(i, 1);
                     if (wasPenalty) {
                         score -= 20;
                         combo = 0;
+                        showCombo(-20, orbX, orbY);
                     } else {
                         const timeSinceLast = (now - lastCollectTime) / 1000;
-                        score += timeSinceLast < 2 ? 10 + combo * 5 : 10;
+                        const points = timeSinceLast < 2 ? 10 + combo * 5 : 10;
+                        score += points;
                         combo = timeSinceLast < 2 ? combo + 1 : 0;
                         lastCollectTime = now;
+                        showCombo(points, orbX, orbY);
                     }
                     scoreDisplay.textContent = `Score: ${score}`;
-                    addOrb(Math.random() < 0.2);
+                    addOrb(Math.random() < penaltyChance);
                 }
             }
 
@@ -192,6 +219,9 @@
                     document.getElementById('modeSelect').style.display = 'block';
                 }
                 scoreDisplay.textContent = `Score: ${score} | Time: ${Math.ceil(timeLeft)}s`;
+            } else if (gameMode === 'endurance') {
+                penaltyChance = Math.min(0.5, penaltyChance + 0.001);
+                scoreDisplay.textContent = `Score: ${score} | Penalty: ${(penaltyChance * 100).toFixed(0)}%`;
             }
 
             renderer.render(scene, camera);
