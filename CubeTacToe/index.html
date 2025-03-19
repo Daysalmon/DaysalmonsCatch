@@ -18,6 +18,7 @@
         <option value="ai">vs AI</option>
     </select>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r134/three.min.js"></script>
+    <script src="https://unpkg.com/three@0.134.0/examples/js/controls/OrbitControls.js"></script>
     <script>
         // Scene setup
         const scene = new THREE.Scene();
@@ -26,7 +27,11 @@
         renderer.setSize(window.innerWidth, window.innerHeight);
         document.body.appendChild(renderer.domElement);
 
-        // Orbit controls
+        // Add ambient light (fixes dark scene)
+        const light = new THREE.AmbientLight(0xffffff, 1);
+        scene.add(light);
+
+        // Orbit controls (now loaded from separate script)
         const controls = new THREE.OrbitControls(camera, renderer.domElement);
         controls.enableDamping = true;
         controls.dampingFactor = 0.05;
@@ -39,7 +44,7 @@
             for (let y = 0; y < gridSize; y++) {
                 for (let z = 0; z < gridSize; z++) {
                     const geometry = new THREE.BoxGeometry(cellSize * 0.9, cellSize * 0.9, cellSize * 0.9);
-                    const material = new THREE.MeshBasicMaterial({ color: 0xFFFFFF, wireframe: true, transparent: true, opacity: 0.2 });
+                    const material = new THREE.MeshBasicMaterial({ color: 0xFFFFFF, wireframe: true, transparent: true, opacity: 0.5 }); // Upped opacity
                     const cube = new THREE.Mesh(geometry, material);
                     cube.position.set(x - 1, y - 1, z - 1);
                     cube.userData = { x, y, z, occupied: false, mark: null };
@@ -50,10 +55,10 @@
         }
 
         // Marks
-        const xGeometry = new THREE.BoxGeometry(0.1, 0.8, 0.1); // Simple X as crossed lines
-        const oGeometry = new THREE.TorusGeometry(0.3, 0.1, 16, 100); // O as a ring
-        const xMaterial = new THREE.MeshBasicMaterial({ color: 0xFF4040 }); // Red X
-        const oMaterial = new THREE.MeshBasicMaterial({ color: 0x4040FF }); // Blue O
+        const xGeometry = new THREE.BoxGeometry(0.1, 0.8, 0.1);
+        const oGeometry = new THREE.TorusGeometry(0.3, 0.1, 16, 100);
+        const xMaterial = new THREE.MeshBasicMaterial({ color: 0xFF4040 });
+        const oMaterial = new THREE.MeshBasicMaterial({ color: 0x4040FF });
 
         // Game state
         let currentPlayer = 'X';
@@ -61,20 +66,21 @@
         const modeSelect = document.getElementById('mode');
         let gameMode = modeSelect.value;
 
-        // Raycaster for clicking
+        // Raycaster
         const raycaster = new THREE.Raycaster();
         const mouse = new THREE.Vector2();
 
-        // Winning lines (simplified: rows only for now, full 49 later)
+        // Winning lines (rows only for now)
         const winningLines = [];
         for (let i = 0; i < gridSize; i++) {
             for (let j = 0; j < gridSize; j++) {
-                winningLines.push(cells.slice(i * 9 + j * 3, i * 9 + j * 3 + 3)); // Rows
+                winningLines.push(cells.slice(i * 9 + j * 3, i * 9 + j * 3 + 3));
             }
         }
 
         // Camera position
-        camera.position.set(3, 3, 3);
+        camera.position.set(4, 4, 4);
+        camera.lookAt(0, 0, 0);
         controls.update();
 
         // Event listeners
@@ -82,6 +88,7 @@
         modeSelect.addEventListener('change', () => {
             gameMode = modeSelect.value;
             resetGame();
+            if (gameMode === 'ai' && currentPlayer === 'O') setTimeout(aiMove, 500);
         });
 
         function onClick(event) {
@@ -95,7 +102,7 @@
                 if (!cell.userData.occupied) {
                     placeMark(cell);
                     checkWin();
-                    if (!gameOver && gameMode === 'ai' && currentPlayer === 'O') aiMove();
+                    if (!gameOver && gameMode === 'ai' && currentPlayer === 'O') setTimeout(aiMove, 500);
                 }
             }
         }
