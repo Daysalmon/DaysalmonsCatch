@@ -6,27 +6,27 @@
         body { margin: 0; overflow: hidden; touch-action: none; background: #000; }
         #score { 
             position: absolute; 
-            bottom: 20px; 
-            left: 20px; 
+            bottom: 2vw; /* Scaled */
+            left: 2vw; /* Scaled */
             color: #00ffff; 
             font-family: 'Courier New', monospace; 
-            font-size: 32px; 
+            font-size: 1.5vw; /* ~24px at 1600px */
             z-index: 1; 
-            text-shadow: 0 0 8px #00ffff, 0 0 15px #00ffff, 0 0 20px #00ffff; 
+            text-shadow: 0 0 0.5vw #00ffff, 0 0 1vw #00ffff; /* Scaled glow */
             display: none; 
             line-height: 1.2; 
         }
         #title { 
             position: absolute; 
-            bottom: 80px; /* Moved to bottom */
+            bottom: 5vw; /* Scaled, above score */
             left: 50%; 
             transform: translateX(-50%); 
             color: #00ffff; 
             font-family: 'Courier New', monospace; 
-            font-size: 24px; /* Shrunk */
+            font-size: 2.5vw; /* ~40px at 1600px */
             font-weight: bold; 
             z-index: 1; 
-            text-shadow: 0 0 8px #00ffff, 0 0 15px #00ffff; /* Adjusted glow */
+            text-shadow: 0 0 0.5vw #00ffff, 0 0 1vw #00ffff; /* Scaled glow */
         }
         #modeSelect { 
             position: absolute; 
@@ -35,21 +35,21 @@
             transform: translate(-50%, -50%); 
             color: #00ffff; 
             font-family: 'Courier New', monospace; 
-            font-size: 28px; 
+            font-size: 1.75vw; /* ~28px at 1600px */
             z-index: 1; 
             text-align: center; 
-            text-shadow: 0 0 8px #00ffff; 
+            text-shadow: 0 0 0.5vw #00ffff; 
         }
         #modeSelect button { 
             background: #000; 
             color: #00ffff; 
-            border: 3px solid #00ffff; 
-            padding: 15px 30px; 
-            margin: 8px; 
+            border: 0.2vw solid #00ffff; /* Scaled */
+            padding: 1vw 2vw; /* Scaled */
+            margin: 0.5vw; 
             font-family: 'Courier New', monospace; 
-            font-size: 24px; 
+            font-size: 1.5vw; /* ~24px at 1600px */
             cursor: pointer; 
-            text-shadow: 0 0 8px #00ffff; 
+            text-shadow: 0 0 0.5vw #00ffff; 
         }
         #modeSelect button:hover { 
             background: #00ffff; 
@@ -60,10 +60,10 @@
             position: absolute; 
             color: #ffff00; 
             font-family: 'Courier New', monospace; 
-            font-size: 24px; 
+            font-size: 1.5vw; /* ~24px at 1600px */
             z-index: 1; 
             display: none; 
-            text-shadow: 0 0 8px #ffff00; 
+            text-shadow: 0 0 0.5vw #ffff00; 
         }
         canvas { width: 100%; height: 100%; }
     </style>
@@ -105,20 +105,28 @@
         const stars = new THREE.Points(starGeometry, starMaterial);
         scene.add(stars);
 
-        const shape = new THREE.Shape();
+        // Updated Border: TubeGeometry for Thickness
+        const path = new THREE.Shape();
         const width = 40, height = 32, radius = 2;
-        shape.moveTo(-width / 2 + radius, height / 2 - 5);
-        shape.lineTo(width / 2 - radius, height / 2 - 5);
-        shape.quadraticCurveTo(width / 2, height / 2 - 5, width / 2, height / 2 - radius - 5);
-        shape.lineTo(width / 2, -height / 2 + radius - 5);
-        shape.quadraticCurveTo(width / 2, -height / 2 - 5, width / 2 - radius, -height / 2 - 5);
-        shape.lineTo(-width / 2 + radius, -height / 2 - 5);
-        shape.quadraticCurveTo(-width / 2, -height / 2 - 5, -width / 2, -height / 2 + radius - 5);
-        shape.lineTo(-width / 2, height / 2 - radius - 5);
-        shape.quadraticCurveTo(-width / 2, height / 2 - 5, -width / 2 + radius, height / 2 - 5);
-        const borderGeometry = new THREE.BufferGeometry().setFromPoints(shape.getPoints(32));
-        const borderMaterial = new THREE.LineBasicMaterial({ color: 0x00ffff, linewidth: 10 });
-        const border = new THREE.LineLoop(borderGeometry, borderMaterial);
+        path.moveTo(-width / 2 + radius, height / 2 - 5);
+        path.lineTo(width / 2 - radius, height / 2 - 5);
+        path.quadraticCurveTo(width / 2, height / 2 - 5, width / 2, height / 2 - radius - 5);
+        path.lineTo(width / 2, -height / 2 + radius - 5);
+        path.quadraticCurveTo(width / 2, -height / 2 - 5, width / 2 - radius, -height / 2 - 5);
+        path.lineTo(-width / 2 + radius, -height / 2 - 5);
+        path.quadraticCurveTo(-width / 2, -height / 2 - 5, -width / 2, -height / 2 + radius - 5);
+        path.lineTo(-width / 2, height / 2 - radius - 5);
+        path.quadraticCurveTo(-width / 2, height / 2 - 5, -width / 2 + radius, height / 2 - 5);
+        const points = path.getPoints(32);
+        const borderGeometry = new THREE.TubeGeometry(
+            new THREE.CatmullRomCurve3(points.map(p => new THREE.Vector3(p.x, p.y, 0)), true),
+            64, // tubular segments
+            0.5, // radius
+            8,   // radial segments
+            true // closed
+        );
+        const borderMaterial = new THREE.MeshBasicMaterial({ color: 0x00ffff });
+        const border = new THREE.Mesh(borderGeometry, borderMaterial);
         scene.add(border);
 
         const playerGeometry = new THREE.BoxGeometry(1, 1, 1);
@@ -290,10 +298,10 @@
                 borderPulse--;
                 const pulse = Math.sin(borderPulse * Math.PI / 30);
                 borderMaterial.color.setRGB(pulse, 1, 1); // Cyan to white
-                title.style.color = `rgb(${pulse * 255}, 255, 255)`; // Sync title pulse
+                title.style.color = `rgb(${pulse * 255}, 255, 255)`; // Sync title
             } else {
                 borderMaterial.color.set(0x00ffff);
-                title.style.color = '#00ffff'; // Reset to cyan
+                title.style.color = '#00ffff';
             }
 
             if (dustParticles.length < 10) {
