@@ -30,7 +30,7 @@
         const ambientLight = new THREE.AmbientLight(0x404040, 0.5);
         scene.add(ambientLight);
         const pointLight = new THREE.PointLight(0xffffff, 2, 100);
-        pointLight.position.set(0, 5, 25); // Adjusted with camera
+        pointLight.position.set(0, 5, 25);
         scene.add(pointLight);
 
         const starGeometry = new THREE.BufferGeometry();
@@ -42,10 +42,27 @@
         const stars = new THREE.Points(starGeometry, starMaterial);
         scene.add(stars);
 
-        const borderGeometry = new THREE.BoxGeometry(40, 32, 0.1); // Doubled size
-        const borderMaterial = new THREE.MeshBasicMaterial({ color: 0x00ffff, wireframe: true });
-        const border = new THREE.Mesh(borderGeometry, borderMaterial);
-        scene.add(border);
+        // New Border: Glowing Edges
+        const borderGeometry = new THREE.BoxGeometry(40, 32, 0.1);
+        const edges = new THREE.EdgesGeometry(borderGeometry);
+        const edgeMaterial = new THREE.LineBasicMaterial({ color: 0x00ffff, linewidth: 2 });
+        const borderEdges = new THREE.LineSegments(edges, edgeMaterial);
+        scene.add(borderEdges);
+
+        // Border Nodes
+        const nodeGeometry = new THREE.SphereGeometry(0.5, 16, 16);
+        const nodeMaterial = new THREE.MeshPhongMaterial({ color: 0x00ffff, shininess: 100 });
+        const nodes = [
+            new THREE.Mesh(nodeGeometry, nodeMaterial), // Top-left
+            new THREE.Mesh(nodeGeometry, nodeMaterial), // Top-right
+            new THREE.Mesh(nodeGeometry, nodeMaterial), // Bottom-left
+            new THREE.Mesh(nodeGeometry, nodeMaterial)  // Bottom-right
+        ];
+        nodes[0].position.set(-20, 16, 0);
+        nodes[1].position.set(20, 16, 0);
+        nodes[2].position.set(-20, -16, 0);
+        nodes[3].position.set(20, -16, 0);
+        nodes.forEach(node => scene.add(node));
 
         const playerGeometry = new THREE.BoxGeometry(1, 1, 1);
         const playerMaterial = new THREE.MeshBasicMaterial({ color: 0x00ff00, wireframe: true });
@@ -107,10 +124,10 @@
                 const glow = new THREE.Mesh(glowGeometry, glowMaterial);
                 orb.add(glow);
             }
-            const xRange = 36; // Wider spawn area
+            const xRange = 36;
             orb.position.set(
                 (Math.random() - 0.5) * xRange,
-                (Math.random() - 0.5) * 28, // Taller spawn area
+                (Math.random() - 0.5) * 28,
                 0
             );
             orb.userData = { 
@@ -123,8 +140,12 @@
             if (!isPenalty) colorIndex++;
         }
         function maintainOrbs() {
-            while (orbs.length < 3) addOrb();
-            if (orbs.length < 4 && Math.random() < penaltyChance) addOrb(true);
+            let goodCount = orbs.filter(orb => !orb.userData.isPenalty).length;
+            while (goodCount < 3) {
+                addOrb();
+                goodCount++;
+            }
+            if (orbs.length < 5 && Math.random() < penaltyChance) addOrb(true); // Up to 5
         }
         for (let i = 0; i < 3; i++) addOrb();
         if (Math.random() < penaltyChance) addOrb(true);
@@ -132,7 +153,7 @@
         function updateCamera() {
             const aspect = window.innerWidth / window.innerHeight;
             camera.fov = 75;
-            camera.position.set(0, 5, 25); // Pulled back
+            camera.position.set(0, 5, 25);
             camera.aspect = aspect;
             camera.updateProjectionMatrix();
             camera.lookAt(0, 0, 0);
@@ -178,7 +199,7 @@
             if (keys['ArrowDown']) player.position.y -= speed;
             if (keys['ArrowLeft']) player.position.x -= speed;
             if (keys['ArrowRight']) player.position.x += speed;
-            player.position.x = Math.max(-20, Math.min(20, player.position.x)); // New bounds
+            player.position.x = Math.max(-20, Math.min(20, player.position.x));
             player.position.y = Math.max(-16, Math.min(16, player.position.y));
 
             dashDuration = Math.max(0, dashDuration - 1);
@@ -190,6 +211,11 @@
                     orb.scale.set(1 + 0.1 * Math.sin(now * 0.005), 1 + 0.1 * Math.sin(now * 0.005), 1 + 0.1 * Math.sin(now * 0.005));
                 }
             });
+
+            // Border pulsing
+            const borderScale = 1 + 0.02 * Math.sin(now * 0.002);
+            borderEdges.scale.set(borderScale, borderScale, 1);
+            nodes.forEach(node => node.scale.set(1 + 0.1 * Math.sin(now * 0.005), 1 + 0.1 * Math.sin(now * 0.005), 1 + 0.1 * Math.sin(now * 0.005)));
 
             if (dustParticles.length < 10) {
                 const dust = new THREE.Mesh(dustGeometry, dustMaterial);
@@ -209,7 +235,7 @@
 
             orbs.forEach(orb => {
                 orb.position.add(orb.userData.velocity);
-                if (orb.position.x > 19 || orb.position.x < -19) orb.userData.velocity.x *= -1; // New bounds
+                if (orb.position.x > 19 || orb.position.x < -19) orb.userData.velocity.x *= -1;
                 if (orb.position.y > 15 || orb.position.y < -15) orb.userData.velocity.y *= -1;
                 orb.position.z = 0;
                 if (orb.userData.isPenalty) {
