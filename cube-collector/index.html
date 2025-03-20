@@ -59,20 +59,27 @@
         let dashCooldown = 0, dashDuration = 0;
         const scoreDisplay = document.getElementById('score');
         const comboIndicator = document.getElementById('comboIndicator');
+        const goodColors = [
+            0x66ccff, // Light Blue
+            0xffff66, // Yellow
+            0xff99cc, // Pink
+            0x66ffff, // Cyan
+            0xccff66, // Lime
+            0xff9966  // Orange
+        ];
+        let colorIndex = 0;
         function addOrb(isPenalty = false) {
             const orbGeometry = new THREE.SphereGeometry(0.5, 32, 32);
-            let color;
-            if (isPenalty) {
-                color = 0x666666; // Gray for penalty
-            } else {
-                do { color = Math.random() * 0xffffff; } while (color >= 0x555555 && color <= 0xaaaaaa); // Exclude grays
-            }
-            const orbMaterial = new THREE.MeshPhongMaterial({
-                color: color,
-                emissive: isPenalty ? 0xff0000 : 0x333333,
-                emissiveIntensity: isPenalty ? 0.5 : 1 // Subtle red aura
+            const orbMaterial = new THREE.MeshBasicMaterial({ 
+                color: isPenalty ? 0x000000 : goodColors[colorIndex % goodColors.length] 
             });
             const orb = new THREE.Mesh(orbGeometry, orbMaterial);
+            if (isPenalty) {
+                const outlineGeometry = new THREE.SphereGeometry(0.55, 32, 32);
+                const outlineMaterial = new THREE.MeshBasicMaterial({ color: 0xff0000, wireframe: true });
+                const outline = new THREE.Mesh(outlineGeometry, outlineMaterial);
+                orb.add(outline); // Attach red outline
+            }
             const aspect = window.innerWidth / window.innerHeight;
             const xRange = aspect < 1 ? 8 : 18;
             orb.position.set(
@@ -87,6 +94,7 @@
             };
             scene.add(orb);
             orbs.push(orb);
+            if (!isPenalty) colorIndex++; // Cycle colors for good orbs
         }
         function maintainOrbs() {
             while (orbs.length < 3) addOrb();
