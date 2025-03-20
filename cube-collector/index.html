@@ -42,11 +42,37 @@
         const stars = new THREE.Points(starGeometry, starMaterial);
         scene.add(stars);
 
-        // New Border: Pulsing Wall
-        const borderGeometry = new THREE.BoxGeometry(40, 32, 0.1);
-        const borderMaterial = new THREE.MeshBasicMaterial({ color: 0x00ffff, transparent: true, opacity: 0.1 });
-        const border = new THREE.Mesh(borderGeometry, borderMaterial);
-        scene.add(border);
+        // New Border: Rotating Rings + Tron Lines
+        const ringGeometry = new THREE.RingGeometry(0.5, 1, 32);
+        const ringMaterial = new THREE.MeshBasicMaterial({ color: 0x00ffff, side: THREE.DoubleSide });
+        const rings = [
+            new THREE.Mesh(ringGeometry, ringMaterial), // Top
+            new THREE.Mesh(ringGeometry, ringMaterial), // Bottom
+            new THREE.Mesh(ringGeometry, ringMaterial), // Left
+            new THREE.Mesh(ringGeometry, ringMaterial)  // Right
+        ];
+        rings[0].position.set(0, 16, 0); // Top
+        rings[1].position.set(0, -16, 0); // Bottom
+        rings[2].position.set(-20, 0, 0); // Left
+        rings[3].position.set(20, 0, 0); // Right
+        rings[0].rotation.x = Math.PI / 2;
+        rings[1].rotation.x = Math.PI / 2;
+        rings[2].rotation.y = Math.PI / 2;
+        rings[3].rotation.y = Math.PI / 2;
+        rings.forEach(ring => scene.add(ring));
+
+        // Tron Connecting Lines
+        const lineMaterial = new THREE.LineBasicMaterial({ color: 0x00ffff, linewidth: 2 });
+        const linePoints = [
+            new THREE.Vector3(-20, 16, 0), // Top-left
+            new THREE.Vector3(20, 16, 0),  // Top-right
+            new THREE.Vector3(20, -16, 0), // Bottom-right
+            new THREE.Vector3(-20, -16, 0), // Bottom-left
+            new THREE.Vector3(-20, 16, 0)  // Back to top-left
+        ];
+        const lineGeometry = new THREE.BufferGeometry().setFromPoints(linePoints);
+        const borderLines = new THREE.Line(lineGeometry, lineMaterial);
+        scene.add(borderLines);
 
         const playerGeometry = new THREE.BoxGeometry(1, 1, 1);
         const playerMaterial = new THREE.MeshBasicMaterial({ color: 0x00ff00, wireframe: true });
@@ -161,7 +187,7 @@
             gameMode = mode;
             document.getElementById('modeSelect').style.display = 'none';
             if (mode === 'timed') timeLeft = 60;
-            penaltyChance = 0.2; // Reset for all modes
+            penaltyChance = 0.2;
             animate();
         }
 
@@ -196,8 +222,9 @@
                 }
             });
 
-            // Border pulsing opacity
-            borderMaterial.opacity = 0.1 + 0.2 * (Math.sin(now * 0.002) + 1) / 2; // 0.1 to 0.3
+            // Border Dynamics
+            rings.forEach(ring => ring.rotation.z += 0.005); // Slow rotation
+            lineMaterial.color.setHSL(0.5, 1, 0.5 + 0.2 * Math.sin(now * 0.002)); // Pulse brightness
 
             if (dustParticles.length < 10) {
                 const dust = new THREE.Mesh(dustGeometry, dustMaterial);
@@ -256,7 +283,7 @@
 
             if (gameMode === 'timed') {
                 timeLeft -= 1 / 60;
-                penaltyChance = Math.min(0.5, penaltyChance + 0.005); // Ramps to 0.5
+                penaltyChance = Math.min(0.5, penaltyChance + 0.005);
                 if (timeLeft <= 0) {
                     alert(`Game Over! Score: ${score}`);
                     gameMode = null;
@@ -264,10 +291,10 @@
                 }
                 scoreDisplay.textContent = `Score: ${score} | Time: ${Math.ceil(timeLeft)}s`;
             } else if (gameMode === 'endurance') {
-                penaltyChance = Math.min(0.6, penaltyChance + 0.005); // Ramps to 0.6
+                penaltyChance = Math.min(0.6, penaltyChance + 0.005);
                 scoreDisplay.textContent = `Score: ${score} | Penalty: ${(penaltyChance * 100).toFixed(0)}%`;
             } else if (gameMode === 'free') {
-                penaltyChance = Math.min(0.5, penaltyChance + 0.005); // Ramps to 0.5
+                penaltyChance = Math.min(0.5, penaltyChance + 0.005);
                 scoreDisplay.textContent = `Score: ${score}`;
             }
 
