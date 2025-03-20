@@ -77,9 +77,17 @@
             if (isPenalty) {
                 const outlineGeometry = new THREE.RingGeometry(0.5, 0.6, 32);
                 const outlineMaterial = new THREE.MeshBasicMaterial({ color: 0xff0000, side: THREE.DoubleSide });
-                const outline = new THREE.Mesh(outlineGeometry, outlineMaterial);
-                outline.rotation.x = Math.PI / 2;
-                orb.add(outline);
+                
+                const outlineXY = new THREE.Mesh(outlineGeometry, outlineMaterial);
+                outlineXY.rotation.x = Math.PI / 2;
+                orb.add(outlineXY);
+                
+                const outlineYZ = new THREE.Mesh(outlineGeometry, outlineMaterial);
+                outlineYZ.rotation.y = Math.PI / 2;
+                orb.add(outlineYZ);
+                
+                const outlineXZ = new THREE.Mesh(outlineGeometry, outlineMaterial);
+                orb.add(outlineXZ);
             }
             const aspect = window.innerWidth / window.innerHeight;
             const xRange = aspect < 1 ? 8 : 18;
