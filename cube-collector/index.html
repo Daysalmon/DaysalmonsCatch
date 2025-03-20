@@ -304,15 +304,16 @@
                     color.b + (1 - color.b) * pulse
                 ); // Ball color to white
                 title.style.color = `rgb(${(color.r + (1 - color.r) * pulse) * 255}, ${(color.g + (1 - color.g) * pulse) * 255}, ${(color.b + (1 - color.b) * pulse) * 255})`;
-                border.scale.set(1 + 0.02 * pulse, 1 + 0.02 * pulse, 1); // Smaller pulse
+                border.scale.set(1 + 0.02 * pulse, 1 + 0.02 * pulse, 1);
             } else if (borderShake > 0) {
                 borderShake--;
                 const shake = Math.sin(borderShake * Math.PI / 10) * 0.5;
-                border.position.set(shake * (Math.random() - 0.5), shake * (Math.random() - 0.5), 0); // Bigger shake
+                border.position.set(shake * (Math.random() - 0.5), shake * (Math.random() - 0.5), 0);
                 borderMaterial.color.set(0x00ffff);
                 title.style.color = '#00ffff';
+                border.scale.set(1, 1, 1);
             } else {
-                borderMaterial.color.set(0x00ffff);
+                borderMaterial.color.set(0x00ffff); // Reset only when both effects are done
                 title.style.color = '#00ffff';
                 border.scale.set(1, 1, 1);
                 border.position.set(0, 0, 0);
