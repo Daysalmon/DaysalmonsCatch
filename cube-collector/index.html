@@ -27,7 +27,7 @@
         renderer.setSize(window.innerWidth, window.innerHeight);
         document.body.appendChild(renderer.domElement);
 
-        const ambientLight = new THREE.AmbientLight(0x404040, 0.5); // Softer light
+        const ambientLight = new THREE.AmbientLight(0x404040, 0.5);
         scene.add(ambientLight);
 
         const starGeometry = new THREE.BufferGeometry();
@@ -63,14 +63,14 @@
             const orbGeometry = new THREE.SphereGeometry(0.5, 32, 32);
             let color;
             if (isPenalty) {
-                color = 0x666666; // Gray base
+                color = 0x666666; // Gray for penalty
             } else {
-                do { color = Math.random() * 0xffffff; } while (color > 0xaaaaaa && color < 0x555555);
+                do { color = Math.random() * 0xffffff; } while (color >= 0x555555 && color <= 0xaaaaaa); // Exclude grays
             }
             const orbMaterial = new THREE.MeshPhongMaterial({
                 color: color,
                 emissive: isPenalty ? 0xff0000 : 0x333333,
-                emissiveIntensity: isPenalty ? 1.5 : 1 // Balanced glow
+                emissiveIntensity: isPenalty ? 0.5 : 1 // Subtle red aura
             });
             const orb = new THREE.Mesh(orbGeometry, orbMaterial);
             const aspect = window.innerWidth / window.innerHeight;
@@ -97,7 +97,7 @@
 
         function updateCamera() {
             const aspect = window.innerWidth / window.innerHeight;
-            camera.fov = 75; // PC focus
+            camera.fov = 75;
             camera.position.set(0, 5, 15);
             camera.aspect = aspect;
             camera.updateProjectionMatrix();
@@ -137,7 +137,7 @@
         function animate() {
             if (!gameMode) return;
             requestAnimationFrame(animate);
-            const speed = dashDuration > 0 ? 0.3 : 0.1; // Slower dash
+            const speed = dashDuration > 0 ? 0.3 : 0.1;
             const now = Date.now();
 
             if (keys['ArrowUp']) player.position.y += speed;
