@@ -4,14 +4,71 @@
     <title>Cube Collector</title>
     <style>
         body { margin: 0; overflow: hidden; touch-action: none; background: #000; }
-        #score { position: absolute; top: 10px; left: 10px; color: white; font-family: Arial; font-size: 20px; z-index: 1; }
-        #modeSelect { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); color: white; font-family: Arial; font-size: 24px; z-index: 1; text-align: center; }
-        #comboIndicator { position: absolute; color: yellow; font-family: Arial; font-size: 16px; z-index: 1; display: none; }
+        #score { 
+            position: absolute; 
+            top: 20px; 
+            left: 20px; 
+            color: #00ffff; 
+            font-family: 'Courier New', monospace; 
+            font-size: 28px; 
+            z-index: 1; 
+            text-shadow: 0 0 5px #00ffff, 0 0 10px #00ffff; /* Neon glow */
+        }
+        #title { 
+            position: absolute; 
+            top: 10px; 
+            left: 50%; 
+            transform: translateX(-50%); 
+            color: #00ffff; 
+            font-family: 'Courier New', monospace; 
+            font-size: 36px; 
+            font-weight: bold; 
+            z-index: 1; 
+            text-shadow: 0 0 5px #00ffff, 0 0 15px #00ffff; /* Tron glow */
+        }
+        #modeSelect { 
+            position: absolute; 
+            top: 50%; 
+            left: 50%; 
+            transform: translate(-50%, -50%); 
+            color: #00ffff; 
+            font-family: 'Courier New', monospace; 
+            font-size: 24px; 
+            z-index: 1; 
+            text-align: center; 
+            text-shadow: 0 0 5px #00ffff; 
+        }
+        #modeSelect button { 
+            background: #000; 
+            color: #00ffff; 
+            border: 2px solid #00ffff; 
+            padding: 10px 20px; 
+            margin: 5px; 
+            font-family: 'Courier New', monospace; 
+            font-size: 20px; 
+            cursor: pointer; 
+            text-shadow: 0 0 5px #00ffff; 
+        }
+        #modeSelect button:hover { 
+            background: #00ffff; 
+            color: #000; 
+            text-shadow: none; 
+        }
+        #comboIndicator { 
+            position: absolute; 
+            color: #ffff00; 
+            font-family: 'Courier New', monospace; 
+            font-size: 20px; 
+            z-index: 1; 
+            display: none; 
+            text-shadow: 0 0 5px #ffff00; 
+        }
         canvas { width: 100%; height: 100%; }
     </style>
 </head>
 <body>
     <div id="score">Score: 0</div>
+    <div id="title">CUBE COLLECTOR</div>
     <div id="modeSelect">
         <p>Select Mode:</p>
         <button onclick="startGame('free')">Free Play</button>
@@ -42,7 +99,7 @@
         const stars = new THREE.Points(starGeometry, starMaterial);
         scene.add(stars);
 
-        // New Border: Rounded Square Outline with Collect Pulse
+        // Updated Border: Thicker Rounded Square Outline
         const shape = new THREE.Shape();
         const width = 40, height = 32, radius = 2;
         shape.moveTo(-width / 2 + radius, height / 2);
@@ -55,7 +112,7 @@
         shape.lineTo(-width / 2, height / 2 - radius);
         shape.quadraticCurveTo(-width / 2, height / 2, -width / 2 + radius, height / 2);
         const borderGeometry = new THREE.BufferGeometry().setFromPoints(shape.getPoints(32));
-        const borderMaterial = new THREE.LineBasicMaterial({ color: 0x00ffff, linewidth: 2 });
+        const borderMaterial = new THREE.LineBasicMaterial({ color: 0x00ffff, linewidth: 4 }); // Thicker line
         const border = new THREE.LineLoop(borderGeometry, borderMaterial);
         scene.add(border);
 
@@ -71,7 +128,7 @@
 
         const orbs = [];
         let score = 0, lastCollectTime = 0, combo = 0, penaltyChance = 0.2;
-        let borderPulse = 0; // Pulse timer
+        let borderPulse = 0;
         const scoreDisplay = document.getElementById('score');
         const comboIndicator = document.getElementById('comboIndicator');
         const goodColors = [
@@ -211,10 +268,10 @@
             // Border Pulse on Collect
             if (borderPulse > 0) {
                 borderPulse--;
-                const pulse = Math.sin(borderPulse * Math.PI / 30); // 0.5s pulse (30 frames)
+                const pulse = Math.sin(borderPulse * Math.PI / 30);
                 borderMaterial.color.setHSL(0.5, 1, 0.5 + 0.5 * pulse); // Cyan to white
             } else {
-                borderMaterial.color.set(0x00ffff); // Reset to cyan
+                borderMaterial.color.set(0x00ffff);
             }
 
             if (dustParticles.length < 10) {
@@ -266,7 +323,7 @@
                         combo = timeSinceLast < 2 ? combo + 1 : 0;
                         lastCollectTime = now;
                         showCombo(points, orbX, orbY);
-                        borderPulse = 30; // Trigger 0.5s pulse
+                        borderPulse = 30;
                     }
                     scoreDisplay.textContent = `Score: ${score}`;
                     maintainOrbs();
