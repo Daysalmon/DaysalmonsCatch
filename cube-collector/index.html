@@ -105,7 +105,6 @@
         const stars = new THREE.Points(starGeometry, starMaterial);
         scene.add(stars);
 
-        // Updated Border: Thinner Tube, Higher Resolution
         const path = new THREE.Shape();
         const width = 40, height = 32, radius = 2;
         path.moveTo(-width / 2 + radius, height / 2 - 5);
@@ -117,13 +116,13 @@
         path.quadraticCurveTo(-width / 2, -height / 2 - 5, -width / 2, -height / 2 + radius - 5);
         path.lineTo(-width / 2, height / 2 - radius - 5);
         path.quadraticCurveTo(-width / 2, height / 2 - 5, -width / 2 + radius, height / 2 - 5);
-        const points = path.getPoints(128); // Higher resolution
+        const points = path.getPoints(128);
         const borderGeometry = new THREE.TubeGeometry(
             new THREE.CatmullRomCurve3(points.map(p => new THREE.Vector3(p.x, p.y, 0)), true),
-            256, // Smoother tube
-            0.166, // 2/3 of 0.25
-            8,    // Radial segments
-            true  // Closed
+            256,
+            0.166,
+            8,
+            true
         );
         const borderMaterial = new THREE.MeshBasicMaterial({ color: 0x00ffff });
         const border = new THREE.Mesh(borderGeometry, borderMaterial);
@@ -305,11 +304,11 @@
                     color.b + (1 - color.b) * pulse
                 ); // Ball color to white
                 title.style.color = `rgb(${(color.r + (1 - color.r) * pulse) * 255}, ${(color.g + (1 - color.g) * pulse) * 255}, ${(color.b + (1 - color.b) * pulse) * 255})`;
-                border.scale.set(1 + 0.05 * pulse, 1 + 0.05 * pulse, 1); // Pulse scale
+                border.scale.set(1 + 0.02 * pulse, 1 + 0.02 * pulse, 1); // Smaller pulse
             } else if (borderShake > 0) {
                 borderShake--;
-                const shake = Math.sin(borderShake * Math.PI / 10) * 0.2;
-                border.position.set(shake * (Math.random() - 0.5), shake * (Math.random() - 0.5), 0); // Shake
+                const shake = Math.sin(borderShake * Math.PI / 10) * 0.5;
+                border.position.set(shake * (Math.random() - 0.5), shake * (Math.random() - 0.5), 0); // Bigger shake
                 borderMaterial.color.set(0x00ffff);
                 title.style.color = '#00ffff';
             } else {
@@ -356,13 +355,13 @@
                     scene.remove(orbs[i]);
                     const wasPenalty = orbs[i].userData.isPenalty;
                     const orbX = orbs[i].position.x, orbY = orbs[i].position.y;
-                    lastBallColor = orbs[i].userData.color;
+                    lastBallColor = orbs[i].userData.color; // Set color on collect
                     orbs.splice(i, 1);
                     if (wasPenalty) {
                         score -= 20;
                         combo = 0;
                         showCombo(-20, orbX, orbY);
-                        borderShake = 20; // 0.33s shake
+                        borderShake = 20;
                     } else {
                         const timeSinceLast = (now - lastCollectTime) / 1000;
                         const points = timeSinceLast < 2 ? 10 + combo * 5 : 10;
@@ -370,7 +369,7 @@
                         combo = timeSinceLast < 2 ? combo + 1 : 0;
                         lastCollectTime = now;
                         showCombo(points, orbX, orbY);
-                        borderPulse = 30; // 0.5s pulse
+                        borderPulse = 30;
                     }
                     scoreText.textContent = `Score: ${score}`;
                     maintainOrbs();
