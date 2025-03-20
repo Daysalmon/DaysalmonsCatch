@@ -42,37 +42,24 @@
         const stars = new THREE.Points(starGeometry, starMaterial);
         scene.add(stars);
 
-        // New Border: Rotating Rings + Tron Lines
-        const ringGeometry = new THREE.RingGeometry(0.5, 1, 32);
-        const ringMaterial = new THREE.MeshBasicMaterial({ color: 0x00ffff, side: THREE.DoubleSide });
-        const rings = [
-            new THREE.Mesh(ringGeometry, ringMaterial), // Top
-            new THREE.Mesh(ringGeometry, ringMaterial), // Bottom
-            new THREE.Mesh(ringGeometry, ringMaterial), // Left
-            new THREE.Mesh(ringGeometry, ringMaterial)  // Right
-        ];
-        rings[0].position.set(0, 16, 0); // Top
-        rings[1].position.set(0, -16, 0); // Bottom
-        rings[2].position.set(-20, 0, 0); // Left
-        rings[3].position.set(20, 0, 0); // Right
-        rings[0].rotation.x = Math.PI / 2;
-        rings[1].rotation.x = Math.PI / 2;
-        rings[2].rotation.y = Math.PI / 2;
-        rings[3].rotation.y = Math.PI / 2;
-        rings.forEach(ring => scene.add(ring));
-
-        // Tron Connecting Lines
-        const lineMaterial = new THREE.LineBasicMaterial({ color: 0x00ffff, linewidth: 2 });
-        const linePoints = [
-            new THREE.Vector3(-20, 16, 0), // Top-left
-            new THREE.Vector3(20, 16, 0),  // Top-right
-            new THREE.Vector3(20, -16, 0), // Bottom-right
-            new THREE.Vector3(-20, -16, 0), // Bottom-left
-            new THREE.Vector3(-20, 16, 0)  // Back to top-left
-        ];
-        const lineGeometry = new THREE.BufferGeometry().setFromPoints(linePoints);
-        const borderLines = new THREE.Line(lineGeometry, lineMaterial);
-        scene.add(borderLines);
+        // New Border: Rounded Square Outline with Pulsing Iso View
+        const shape = new THREE.Shape();
+        const width = 40, height = 32, radius = 2; // Rounded corner radius
+        shape.moveTo(-width / 2 + radius, height / 2);
+        shape.lineTo(width / 2 - radius, height / 2);
+        shape.quadraticCurveTo(width / 2, height / 2, width / 2, height / 2 - radius);
+        shape.lineTo(width / 2, -height / 2 + radius);
+        shape.quadraticCurveTo(width / 2, -height / 2, width / 2 - radius, -height / 2);
+        shape.lineTo(-width / 2 + radius, -height / 2);
+        shape.quadraticCurveTo(-width / 2, -height / 2, -width / 2, -height / 2 + radius);
+        shape.lineTo(-width / 2, height / 2 - radius);
+        shape.quadraticCurveTo(-width / 2, height / 2, -width / 2 + radius, height / 2);
+        const borderGeometry = new THREE.BufferGeometry().setFromPoints(shape.getPoints(32));
+        const borderMaterial = new THREE.LineBasicMaterial({ color: 0x00ffff, linewidth: 2 });
+        const border = new THREE.LineLoop(borderGeometry, borderMaterial);
+        border.rotation.x = Math.PI / 4; // Slight iso tilt
+        border.rotation.y = Math.PI / 4;
+        scene.add(border);
 
         const playerGeometry = new THREE.BoxGeometry(1, 1, 1);
         const playerMaterial = new THREE.MeshBasicMaterial({ color: 0x00ff00, wireframe: true });
@@ -222,9 +209,10 @@
                 }
             });
 
-            // Border Dynamics
-            rings.forEach(ring => ring.rotation.z += 0.005); // Slow rotation
-            lineMaterial.color.setHSL(0.5, 1, 0.5 + 0.2 * Math.sin(now * 0.002)); // Pulse brightness
+            // Border Pulsing Iso Effect
+            const pulse = 0.5 + 0.5 * Math.sin(now * 0.002); // 0 to 1
+            border.position.z = pulse * 2 - 1; // -1 to 1, pulsing depth
+            borderMaterial.color.setHSL(0.5, 1, 0.5 + 0.2 * pulse); // Brightness pulse
 
             if (dustParticles.length < 10) {
                 const dust = new THREE.Mesh(dustGeometry, dustMaterial);
