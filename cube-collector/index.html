@@ -29,8 +29,8 @@
 
         const ambientLight = new THREE.AmbientLight(0x404040, 0.5);
         scene.add(ambientLight);
-        const pointLight = new THREE.PointLight(0xffffff, 2, 100); // Brighter light
-        pointLight.position.set(0, 5, 15);
+        const pointLight = new THREE.PointLight(0xffffff, 2, 100);
+        pointLight.position.set(0, 5, 25); // Adjusted with camera
         scene.add(pointLight);
 
         const starGeometry = new THREE.BufferGeometry();
@@ -42,7 +42,7 @@
         const stars = new THREE.Points(starGeometry, starMaterial);
         scene.add(stars);
 
-        const borderGeometry = new THREE.BoxGeometry(20, 16, 0.1);
+        const borderGeometry = new THREE.BoxGeometry(40, 32, 0.1); // Doubled size
         const borderMaterial = new THREE.MeshBasicMaterial({ color: 0x00ffff, wireframe: true });
         const border = new THREE.Mesh(borderGeometry, borderMaterial);
         scene.add(border);
@@ -85,7 +85,7 @@
                 orbGeometry,
                 isPenalty 
                     ? new THREE.MeshBasicMaterial({ color: 0x000000 })
-                    : new THREE.MeshPhongMaterial({ color: goodColors[colorIndex % goodColors.length], shininess: 100 }) // Bolder shine
+                    : new THREE.MeshPhongMaterial({ color: goodColors[colorIndex % goodColors.length], shininess: 100 })
             );
             if (isPenalty) {
                 const outlineGeometry = new THREE.RingGeometry(0.5, 0.6, 32);
@@ -102,16 +102,15 @@
                 const outlineXZ = new THREE.Mesh(outlineGeometry, outlineMaterial);
                 orb.add(outlineXZ);
             } else {
-                const glowGeometry = new THREE.SphereGeometry(0.4, 16, 16); // Bigger glow
+                const glowGeometry = new THREE.SphereGeometry(0.4, 16, 16);
                 const glowMaterial = new THREE.MeshBasicMaterial({ color: glowColors[colorIndex % glowColors.length] });
                 const glow = new THREE.Mesh(glowGeometry, glowMaterial);
                 orb.add(glow);
             }
-            const aspect = window.innerWidth / window.innerHeight;
-            const xRange = aspect < 1 ? 8 : 18;
+            const xRange = 36; // Wider spawn area
             orb.position.set(
                 (Math.random() - 0.5) * xRange,
-                (Math.random() - 0.5) * 14,
+                (Math.random() - 0.5) * 28, // Taller spawn area
                 0
             );
             orb.userData = { 
@@ -133,7 +132,7 @@
         function updateCamera() {
             const aspect = window.innerWidth / window.innerHeight;
             camera.fov = 75;
-            camera.position.set(0, 5, 15);
+            camera.position.set(0, 5, 25); // Pulled back
             camera.aspect = aspect;
             camera.updateProjectionMatrix();
             camera.lookAt(0, 0, 0);
@@ -179,8 +178,8 @@
             if (keys['ArrowDown']) player.position.y -= speed;
             if (keys['ArrowLeft']) player.position.x -= speed;
             if (keys['ArrowRight']) player.position.x += speed;
-            player.position.x = Math.max(-10, Math.min(10, player.position.x));
-            player.position.y = Math.max(-8, Math.min(8, player.position.y));
+            player.position.x = Math.max(-20, Math.min(20, player.position.x)); // New bounds
+            player.position.y = Math.max(-16, Math.min(16, player.position.y));
 
             dashDuration = Math.max(0, dashDuration - 1);
             dashCooldown = Math.max(0, dashCooldown - 1);
@@ -188,7 +187,7 @@
             player.scale.set(1 + 0.1 * Math.sin(now * 0.005), 1 + 0.1 * Math.sin(now * 0.005), 1 + 0.1 * Math.sin(now * 0.005));
             orbs.forEach(orb => {
                 if (!orb.userData.isPenalty) {
-                    orb.scale.set(1 + 0.1 * Math.sin(now * 0.005), 1 + 0.1 * Math.sin(now * 0.005), 1 + 0.1 * Math.sin(now * 0.005)); // Stronger pulse
+                    orb.scale.set(1 + 0.1 * Math.sin(now * 0.005), 1 + 0.1 * Math.sin(now * 0.005), 1 + 0.1 * Math.sin(now * 0.005));
                 }
             });
 
@@ -210,8 +209,8 @@
 
             orbs.forEach(orb => {
                 orb.position.add(orb.userData.velocity);
-                if (orb.position.x > 9 || orb.position.x < -9) orb.userData.velocity.x *= -1;
-                if (orb.position.y > 7 || orb.position.y < -7) orb.userData.velocity.y *= -1;
+                if (orb.position.x > 19 || orb.position.x < -19) orb.userData.velocity.x *= -1; // New bounds
+                if (orb.position.y > 15 || orb.position.y < -15) orb.userData.velocity.y *= -1;
                 orb.position.z = 0;
                 if (orb.userData.isPenalty) {
                     orb.userData.life--;
