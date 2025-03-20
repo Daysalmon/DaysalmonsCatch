@@ -42,9 +42,9 @@
         const stars = new THREE.Points(starGeometry, starMaterial);
         scene.add(stars);
 
-        // New Border: Rounded Square Outline with Pulsing Iso View
+        // New Border: Rounded Square Outline with Collect Pulse
         const shape = new THREE.Shape();
-        const width = 40, height = 32, radius = 2; // Rounded corner radius
+        const width = 40, height = 32, radius = 2;
         shape.moveTo(-width / 2 + radius, height / 2);
         shape.lineTo(width / 2 - radius, height / 2);
         shape.quadraticCurveTo(width / 2, height / 2, width / 2, height / 2 - radius);
@@ -57,8 +57,6 @@
         const borderGeometry = new THREE.BufferGeometry().setFromPoints(shape.getPoints(32));
         const borderMaterial = new THREE.LineBasicMaterial({ color: 0x00ffff, linewidth: 2 });
         const border = new THREE.LineLoop(borderGeometry, borderMaterial);
-        border.rotation.x = Math.PI / 4; // Slight iso tilt
-        border.rotation.y = Math.PI / 4;
         scene.add(border);
 
         const playerGeometry = new THREE.BoxGeometry(1, 1, 1);
@@ -73,6 +71,7 @@
 
         const orbs = [];
         let score = 0, lastCollectTime = 0, combo = 0, penaltyChance = 0.2;
+        let borderPulse = 0; // Pulse timer
         const scoreDisplay = document.getElementById('score');
         const comboIndicator = document.getElementById('comboIndicator');
         const goodColors = [
@@ -209,10 +208,14 @@
                 }
             });
 
-            // Border Pulsing Iso Effect
-            const pulse = 0.5 + 0.5 * Math.sin(now * 0.002); // 0 to 1
-            border.position.z = pulse * 2 - 1; // -1 to 1, pulsing depth
-            borderMaterial.color.setHSL(0.5, 1, 0.5 + 0.2 * pulse); // Brightness pulse
+            // Border Pulse on Collect
+            if (borderPulse > 0) {
+                borderPulse--;
+                const pulse = Math.sin(borderPulse * Math.PI / 30); // 0.5s pulse (30 frames)
+                borderMaterial.color.setHSL(0.5, 1, 0.5 + 0.5 * pulse); // Cyan to white
+            } else {
+                borderMaterial.color.set(0x00ffff); // Reset to cyan
+            }
 
             if (dustParticles.length < 10) {
                 const dust = new THREE.Mesh(dustGeometry, dustMaterial);
@@ -263,6 +266,7 @@
                         combo = timeSinceLast < 2 ? combo + 1 : 0;
                         lastCollectTime = now;
                         showCombo(points, orbX, orbY);
+                        borderPulse = 30; // Trigger 0.5s pulse
                     }
                     scoreDisplay.textContent = `Score: ${score}`;
                     maintainOrbs();
