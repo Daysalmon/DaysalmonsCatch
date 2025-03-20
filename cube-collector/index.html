@@ -27,8 +27,7 @@
         renderer.setSize(window.innerWidth, window.innerHeight);
         document.body.appendChild(renderer.domElement);
 
-        // Add ambient light for emissive
-        const ambientLight = new THREE.AmbientLight(0x404040, 1);
+        const ambientLight = new THREE.AmbientLight(0x404040, 0.5); // Softer light
         scene.add(ambientLight);
 
         const starGeometry = new THREE.BufferGeometry();
@@ -64,16 +63,14 @@
             const orbGeometry = new THREE.SphereGeometry(0.5, 32, 32);
             let color;
             if (isPenalty) {
-                color = 0x666666; // Gray for penalty
+                color = 0x666666; // Gray base
             } else {
-                do {
-                    color = Math.random() * 0xffffff;
-                } while (color > 0xaaaaaa && color < 0x555555); // Avoid gray shades
+                do { color = Math.random() * 0xffffff; } while (color > 0xaaaaaa && color < 0x555555);
             }
             const orbMaterial = new THREE.MeshPhongMaterial({
                 color: color,
                 emissive: isPenalty ? 0xff0000 : 0x333333,
-                emissiveIntensity: isPenalty ? 3 : 1 // Strong red glow
+                emissiveIntensity: isPenalty ? 1.5 : 1 // Balanced glow
             });
             const orb = new THREE.Mesh(orbGeometry, orbMaterial);
             const aspect = window.innerWidth / window.innerHeight;
@@ -100,8 +97,8 @@
 
         function updateCamera() {
             const aspect = window.innerWidth / window.innerHeight;
-            if (aspect < 1) { camera.fov = 45; camera.position.set(0, 5, 30); }
-            else { camera.fov = 75; camera.position.set(0, 5, 15); }
+            camera.fov = 75; // PC focus
+            camera.position.set(0, 5, 15);
             camera.aspect = aspect;
             camera.updateProjectionMatrix();
             camera.lookAt(0, 0, 0);
@@ -109,30 +106,17 @@
         updateCamera();
 
         const keys = {};
-        let touchStartX = null, touchStartY = null, moveX = 0, moveY = 0;
-        let gameMode = null, timeLeft = 60;
-
-        document.addEventListener('keydown', (e) => keys[e.key] = true);
+        document.addEventListener('keydown', (e) => {
+            keys[e.key] = true;
+            if ((e.key === ' ' || e.key === 'Space') && dashCooldown <= 0) {
+                console.log('Dash triggered');
+                dashDuration = 30;
+                dashCooldown = 120;
+            }
+        });
         document.addEventListener('keyup', (e) => keys[e.key] = false);
-        document.addEventListener('touchstart', (e) => {
-            const touch = e.touches[0];
-            touchStartX = touch.clientX;
-            touchStartY = touch.clientY;
-            e.preventDefault();
-        }, { passive: false });
-        document.addEventListener('touchmove', (e) => {
-            const touch = e.touches[0];
-            const deltaX = touch.clientX - touchStartX;
-            const deltaY = touch.clientY - touchStartY;
-            const aspect = window.innerWidth / window.innerHeight;
-            const speedMultiplier = aspect < 1 ? 0.07 : 0.1;
-            moveX = deltaX * speedMultiplier;
-            moveY = -deltaY * speedMultiplier;
-            touchStartX = touch.clientX;
-            touchStartY = touch.clientY;
-            e.preventDefault();
-        }, { passive: false });
-        document.addEventListener('touchend', () => { moveX = 0; moveY = 0; touchStartX = null; touchStartY = null; });
+
+        let gameMode = null, timeLeft = 60;
 
         function startGame(mode) {
             gameMode = mode;
@@ -153,20 +137,13 @@
         function animate() {
             if (!gameMode) return;
             requestAnimationFrame(animate);
-            const speed = dashDuration > 0 ? 0.5 : 0.1;
+            const speed = dashDuration > 0 ? 0.3 : 0.1; // Slower dash
             const now = Date.now();
 
             if (keys['ArrowUp']) player.position.y += speed;
             if (keys['ArrowDown']) player.position.y -= speed;
             if (keys['ArrowLeft']) player.position.x -= speed;
             if (keys['ArrowRight']) player.position.x += speed;
-            if ((keys[' '] || keys['Space']) && dashCooldown <= 0) { // Check both
-                console.log('Dash triggered');
-                dashDuration = 30;
-                dashCooldown = 120;
-            }
-            player.position.x += moveX;
-            player.position.y += moveY;
             player.position.x = Math.max(-10, Math.min(10, player.position.x));
             player.position.y = Math.max(-8, Math.min(8, player.position.y));
 
