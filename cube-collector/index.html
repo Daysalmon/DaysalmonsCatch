@@ -6,13 +6,15 @@
         body { margin: 0; overflow: hidden; touch-action: none; background: #000; }
         #score { 
             position: absolute; 
-            top: 20px; 
+            bottom: 20px; /* Moved to bottom-left */
             left: 20px; 
             color: #00ffff; 
             font-family: 'Courier New', monospace; 
-            font-size: 32px; /* Bigger */
+            font-size: 32px; 
             z-index: 1; 
-            text-shadow: 0 0 8px #00ffff, 0 0 15px #00ffff, 0 0 20px #00ffff; /* Stronger glow */
+            text-shadow: 0 0 8px #00ffff, 0 0 15px #00ffff, 0 0 20px #00ffff; 
+            display: none; /* Hidden until game starts */
+            line-height: 1.2; /* Stacked list spacing */
         }
         #title { 
             position: absolute; 
@@ -21,10 +23,10 @@
             transform: translateX(-50%); 
             color: #00ffff; 
             font-family: 'Courier New', monospace; 
-            font-size: 40px; /* Bigger */
+            font-size: 40px; 
             font-weight: bold; 
             z-index: 1; 
-            text-shadow: 0 0 10px #00ffff, 0 0 20px #00ffff, 0 0 30px #00ffff; /* Bolder Tron glow */
+            text-shadow: 0 0 10px #00ffff, 0 0 20px #00ffff, 0 0 30px #00ffff; 
         }
         #modeSelect { 
             position: absolute; 
@@ -33,7 +35,7 @@
             transform: translate(-50%, -50%); 
             color: #00ffff; 
             font-family: 'Courier New', monospace; 
-            font-size: 28px; /* Slightly bigger */
+            font-size: 28px; 
             z-index: 1; 
             text-align: center; 
             text-shadow: 0 0 8px #00ffff; 
@@ -41,11 +43,11 @@
         #modeSelect button { 
             background: #000; 
             color: #00ffff; 
-            border: 3px solid #00ffff; /* Thicker border */
-            padding: 15px 30px; /* Bigger buttons */
+            border: 3px solid #00ffff; 
+            padding: 15px 30px; 
             margin: 8px; 
             font-family: 'Courier New', monospace; 
-            font-size: 24px; /* Bigger text */
+            font-size: 24px; 
             cursor: pointer; 
             text-shadow: 0 0 8px #00ffff; 
         }
@@ -58,7 +60,7 @@
             position: absolute; 
             color: #ffff00; 
             font-family: 'Courier New', monospace; 
-            font-size: 24px; /* Slightly bigger */
+            font-size: 24px; 
             z-index: 1; 
             display: none; 
             text-shadow: 0 0 8px #ffff00; 
@@ -67,7 +69,11 @@
     </style>
 </head>
 <body>
-    <div id="score">Score: 0</div>
+    <div id="score">
+        <p id="scoreText">Score: 0</p>
+        <p id="timeText" style="display: none;">Time: 60s</p>
+        <p id="penaltyText" style="display: none;">Penalty: 20%</p>
+    </div>
     <div id="title">CUBE COLLECTOR</div>
     <div id="modeSelect">
         <p>Select Mode:</p>
@@ -99,27 +105,27 @@
         const stars = new THREE.Points(starGeometry, starMaterial);
         scene.add(stars);
 
-        // Updated Border: Even Thicker Rounded Square Outline
+        // Updated Border: Thicker and Brighter Pulse
         const shape = new THREE.Shape();
         const width = 40, height = 32, radius = 2;
-        shape.moveTo(-width / 2 + radius, height / 2);
-        shape.lineTo(width / 2 - radius, height / 2);
-        shape.quadraticCurveTo(width / 2, height / 2, width / 2, height / 2 - radius);
-        shape.lineTo(width / 2, -height / 2 + radius);
-        shape.quadraticCurveTo(width / 2, -height / 2, width / 2 - radius, -height / 2);
-        shape.lineTo(-width / 2 + radius, -height / 2);
-        shape.quadraticCurveTo(-width / 2, -height / 2, -width / 2, -height / 2 + radius);
-        shape.lineTo(-width / 2, height / 2 - radius);
-        shape.quadraticCurveTo(-width / 2, height / 2, -width / 2 + radius, height / 2);
+        shape.moveTo(-width / 2 + radius, height / 2 - 5);
+        shape.lineTo(width / 2 - radius, height / 2 - 5);
+        shape.quadraticCurveTo(width / 2, height / 2 - 5, width / 2, height / 2 - radius - 5);
+        shape.lineTo(width / 2, -height / 2 + radius - 5);
+        shape.quadraticCurveTo(width / 2, -height / 2 - 5, width / 2 - radius, -height / 2 - 5);
+        shape.lineTo(-width / 2 + radius, -height / 2 - 5);
+        shape.quadraticCurveTo(-width / 2, -height / 2 - 5, -width / 2, -height / 2 + radius - 5);
+        shape.lineTo(-width / 2, height / 2 - radius - 5);
+        shape.quadraticCurveTo(-width / 2, height / 2 - 5, -width / 2 + radius, height / 2 - 5);
         const borderGeometry = new THREE.BufferGeometry().setFromPoints(shape.getPoints(32));
-        const borderMaterial = new THREE.LineBasicMaterial({ color: 0x00ffff, linewidth: 6 }); // Even thicker
+        const borderMaterial = new THREE.LineBasicMaterial({ color: 0x00ffff, linewidth: 10 }); // Thicker
         const border = new THREE.LineLoop(borderGeometry, borderMaterial);
         scene.add(border);
 
         const playerGeometry = new THREE.BoxGeometry(1, 1, 1);
         const playerMaterial = new THREE.MeshBasicMaterial({ color: 0x00ff00, wireframe: true });
         const player = new THREE.Mesh(playerGeometry, playerMaterial);
-        player.position.set(0, 0, 0);
+        player.position.set(0, -5, 0);
         scene.add(player);
 
         const dustParticles = [];
@@ -130,6 +136,9 @@
         let score = 0, lastCollectTime = 0, combo = 0, penaltyChance = 0.2;
         let borderPulse = 0;
         const scoreDisplay = document.getElementById('score');
+        const scoreText = document.getElementById('scoreText');
+        const timeText = document.getElementById('timeText');
+        const penaltyText = document.getElementById('penaltyText');
         const comboIndicator = document.getElementById('comboIndicator');
         const goodColors = [
             0x66ccff, // Light Blue
@@ -179,7 +188,7 @@
             const xRange = 36;
             orb.position.set(
                 (Math.random() - 0.5) * xRange,
-                (Math.random() - 0.5) * 28,
+                (Math.random() - 0.5) * 28 - 5,
                 0
             );
             orb.userData = { 
@@ -208,7 +217,7 @@
             camera.position.set(0, 5, 25);
             camera.aspect = aspect;
             camera.updateProjectionMatrix();
-            camera.lookAt(0, 0, 0);
+            camera.lookAt(0, -5, 0);
         }
         updateCamera();
 
@@ -229,8 +238,19 @@
         function startGame(mode) {
             gameMode = mode;
             document.getElementById('modeSelect').style.display = 'none';
-            if (mode === 'timed') timeLeft = 60;
-            penaltyChance = 0.2;
+            document.getElementById('score').style.display = 'block';
+            if (mode === 'timed') {
+                timeLeft = 60;
+                timeText.style.display = 'block';
+                penaltyText.style.display = 'none';
+            } else if (mode === 'endurance') {
+                penaltyChance = 0.2;
+                penaltyText.style.display = 'block';
+                timeText.style.display = 'none';
+            } else {
+                timeText.style.display = 'none';
+                penaltyText.style.display = 'none';
+            }
             animate();
         }
 
@@ -253,7 +273,7 @@
             if (keys['ArrowLeft']) player.position.x -= speed;
             if (keys['ArrowRight']) player.position.x += speed;
             player.position.x = Math.max(-20, Math.min(20, player.position.x));
-            player.position.y = Math.max(-16, Math.min(16, player.position.y));
+            player.position.y = Math.max(-21, Math.min(11, player.position.y));
 
             dashDuration = Math.max(0, dashDuration - 1);
             dashCooldown = Math.max(0, dashCooldown - 1);
@@ -269,7 +289,7 @@
             if (borderPulse > 0) {
                 borderPulse--;
                 const pulse = Math.sin(borderPulse * Math.PI / 30);
-                borderMaterial.color.setHSL(0.5, 1, 0.5 + 0.5 * pulse); // Cyan to white
+                borderMaterial.color.setRGB(pulse, 1, 1); // Cyan to white (brighter)
             } else {
                 borderMaterial.color.set(0x00ffff);
             }
@@ -293,7 +313,7 @@
             orbs.forEach(orb => {
                 orb.position.add(orb.userData.velocity);
                 if (orb.position.x > 19 || orb.position.x < -19) orb.userData.velocity.x *= -1;
-                if (orb.position.y > 15 || orb.position.y < -15) orb.userData.velocity.y *= -1;
+                if (orb.position.y > 11 || orb.position.y < -20) orb.userData.velocity.y *= -1;
                 orb.position.z = 0;
                 if (orb.userData.isPenalty) {
                     orb.userData.life--;
@@ -325,7 +345,7 @@
                         showCombo(points, orbX, orbY);
                         borderPulse = 30;
                     }
-                    scoreDisplay.textContent = `Score: ${score}`;
+                    scoreText.textContent = `Score: ${score}`;
                     maintainOrbs();
                 }
             }
@@ -337,14 +357,12 @@
                     alert(`Game Over! Score: ${score}`);
                     gameMode = null;
                     document.getElementById('modeSelect').style.display = 'block';
+                    document.getElementById('score').style.display = 'none';
                 }
-                scoreDisplay.textContent = `Score: ${score} | Time: ${Math.ceil(timeLeft)}s`;
+                timeText.textContent = `Time: ${Math.ceil(timeLeft)}s`;
             } else if (gameMode === 'endurance') {
                 penaltyChance = Math.min(0.6, penaltyChance + 0.005);
-                scoreDisplay.textContent = `Score: ${score} | Penalty: ${(penaltyChance * 100).toFixed(0)}%`;
-            } else if (gameMode === 'free') {
-                penaltyChance = Math.min(0.5, penaltyChance + 0.005);
-                scoreDisplay.textContent = `Score: ${score}`;
+                penaltyText.textContent = `Penalty: ${(penaltyChance * 100).toFixed(0)}%`;
             }
 
             renderer.render(scene, camera);
