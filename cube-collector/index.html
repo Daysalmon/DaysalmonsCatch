@@ -6,27 +6,27 @@
         body { margin: 0; overflow: hidden; touch-action: none; background: #000; }
         #score { 
             position: absolute; 
-            bottom: 2vw; /* Scaled */
-            left: 2vw; /* Scaled */
+            bottom: 2vw; 
+            left: 2vw; 
             color: #00ffff; 
             font-family: 'Courier New', monospace; 
-            font-size: 1.5vw; /* ~24px at 1600px */
+            font-size: 1.5vw; 
             z-index: 1; 
-            text-shadow: 0 0 0.5vw #00ffff, 0 0 1vw #00ffff; /* Scaled glow */
+            text-shadow: 0 0 0.5vw #00ffff, 0 0 1vw #00ffff; 
             display: none; 
             line-height: 1.2; 
         }
         #title { 
             position: absolute; 
-            bottom: 5vw; /* Scaled, above score */
+            bottom: 7vw; /* Raised */
             left: 50%; 
             transform: translateX(-50%); 
             color: #00ffff; 
             font-family: 'Courier New', monospace; 
-            font-size: 2.5vw; /* ~40px at 1600px */
+            font-size: 2.5vw; 
             font-weight: bold; 
             z-index: 1; 
-            text-shadow: 0 0 0.5vw #00ffff, 0 0 1vw #00ffff; /* Scaled glow */
+            text-shadow: 0 0 0.5vw #00ffff, 0 0 1vw #00ffff; 
         }
         #modeSelect { 
             position: absolute; 
@@ -35,7 +35,7 @@
             transform: translate(-50%, -50%); 
             color: #00ffff; 
             font-family: 'Courier New', monospace; 
-            font-size: 1.75vw; /* ~28px at 1600px */
+            font-size: 1.75vw; 
             z-index: 1; 
             text-align: center; 
             text-shadow: 0 0 0.5vw #00ffff; 
@@ -43,11 +43,11 @@
         #modeSelect button { 
             background: #000; 
             color: #00ffff; 
-            border: 0.2vw solid #00ffff; /* Scaled */
-            padding: 1vw 2vw; /* Scaled */
+            border: 0.2vw solid #00ffff; 
+            padding: 1vw 2vw; 
             margin: 0.5vw; 
             font-family: 'Courier New', monospace; 
-            font-size: 1.5vw; /* ~24px at 1600px */
+            font-size: 1.5vw; 
             cursor: pointer; 
             text-shadow: 0 0 0.5vw #00ffff; 
         }
@@ -60,7 +60,7 @@
             position: absolute; 
             color: #ffff00; 
             font-family: 'Courier New', monospace; 
-            font-size: 1.5vw; /* ~24px at 1600px */
+            font-size: 1.5vw; 
             z-index: 1; 
             display: none; 
             text-shadow: 0 0 0.5vw #ffff00; 
@@ -105,7 +105,7 @@
         const stars = new THREE.Points(starGeometry, starMaterial);
         scene.add(stars);
 
-        // Updated Border: TubeGeometry for Thickness
+        // Updated Border: Thinner Tube, Smoother Corners
         const path = new THREE.Shape();
         const width = 40, height = 32, radius = 2;
         path.moveTo(-width / 2 + radius, height / 2 - 5);
@@ -117,13 +117,13 @@
         path.quadraticCurveTo(-width / 2, -height / 2 - 5, -width / 2, -height / 2 + radius - 5);
         path.lineTo(-width / 2, height / 2 - radius - 5);
         path.quadraticCurveTo(-width / 2, height / 2 - 5, -width / 2 + radius, height / 2 - 5);
-        const points = path.getPoints(32);
+        const points = path.getPoints(64); // More points for smoothness
         const borderGeometry = new THREE.TubeGeometry(
             new THREE.CatmullRomCurve3(points.map(p => new THREE.Vector3(p.x, p.y, 0)), true),
-            64, // tubular segments
-            0.5, // radius
-            8,   // radial segments
-            true // closed
+            128, // More segments for smooth tube
+            0.25, // Half thickness
+            8,   // Radial segments
+            true // Closed
         );
         const borderMaterial = new THREE.MeshBasicMaterial({ color: 0x00ffff });
         const border = new THREE.Mesh(borderGeometry, borderMaterial);
@@ -297,8 +297,11 @@
             if (borderPulse > 0) {
                 borderPulse--;
                 const pulse = Math.sin(borderPulse * Math.PI / 30);
-                borderMaterial.color.setRGB(pulse, 1, 1); // Cyan to white
-                title.style.color = `rgb(${pulse * 255}, 255, 255)`; // Sync title
+                const r = pulse * 1 + (1 - pulse) * 0; // Red: 0 to 1
+                const g = pulse * 1 + (1 - pulse) * 1; // Green: 1 to 1
+                const b = pulse * 1 + (1 - pulse) * 1; // Blue: 1 to 1
+                borderMaterial.color.setRGB(r, g, b); // Cyan to white
+                title.style.color = `rgb(${r * 255}, ${g * 255}, ${b * 255})`; // Sync title
             } else {
                 borderMaterial.color.set(0x00ffff);
                 title.style.color = '#00ffff';
