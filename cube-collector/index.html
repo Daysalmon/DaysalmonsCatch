@@ -6,27 +6,27 @@
         body { margin: 0; overflow: hidden; touch-action: none; background: #000; }
         #score { 
             position: absolute; 
-            bottom: 20px; /* Moved to bottom-left */
+            bottom: 20px; 
             left: 20px; 
             color: #00ffff; 
             font-family: 'Courier New', monospace; 
             font-size: 32px; 
             z-index: 1; 
             text-shadow: 0 0 8px #00ffff, 0 0 15px #00ffff, 0 0 20px #00ffff; 
-            display: none; /* Hidden until game starts */
-            line-height: 1.2; /* Stacked list spacing */
+            display: none; 
+            line-height: 1.2; 
         }
         #title { 
             position: absolute; 
-            top: 10px; 
+            bottom: 80px; /* Moved to bottom */
             left: 50%; 
             transform: translateX(-50%); 
             color: #00ffff; 
             font-family: 'Courier New', monospace; 
-            font-size: 40px; 
+            font-size: 24px; /* Shrunk */
             font-weight: bold; 
             z-index: 1; 
-            text-shadow: 0 0 10px #00ffff, 0 0 20px #00ffff, 0 0 30px #00ffff; 
+            text-shadow: 0 0 8px #00ffff, 0 0 15px #00ffff; /* Adjusted glow */
         }
         #modeSelect { 
             position: absolute; 
@@ -105,7 +105,6 @@
         const stars = new THREE.Points(starGeometry, starMaterial);
         scene.add(stars);
 
-        // Updated Border: Thicker and Brighter Pulse
         const shape = new THREE.Shape();
         const width = 40, height = 32, radius = 2;
         shape.moveTo(-width / 2 + radius, height / 2 - 5);
@@ -118,7 +117,7 @@
         shape.lineTo(-width / 2, height / 2 - radius - 5);
         shape.quadraticCurveTo(-width / 2, height / 2 - 5, -width / 2 + radius, height / 2 - 5);
         const borderGeometry = new THREE.BufferGeometry().setFromPoints(shape.getPoints(32));
-        const borderMaterial = new THREE.LineBasicMaterial({ color: 0x00ffff, linewidth: 10 }); // Thicker
+        const borderMaterial = new THREE.LineBasicMaterial({ color: 0x00ffff, linewidth: 10 });
         const border = new THREE.LineLoop(borderGeometry, borderMaterial);
         scene.add(border);
 
@@ -139,6 +138,7 @@
         const scoreText = document.getElementById('scoreText');
         const timeText = document.getElementById('timeText');
         const penaltyText = document.getElementById('penaltyText');
+        const title = document.getElementById('title');
         const comboIndicator = document.getElementById('comboIndicator');
         const goodColors = [
             0x66ccff, // Light Blue
@@ -285,13 +285,15 @@
                 }
             });
 
-            // Border Pulse on Collect
+            // Border and Title Pulse on Collect
             if (borderPulse > 0) {
                 borderPulse--;
                 const pulse = Math.sin(borderPulse * Math.PI / 30);
-                borderMaterial.color.setRGB(pulse, 1, 1); // Cyan to white (brighter)
+                borderMaterial.color.setRGB(pulse, 1, 1); // Cyan to white
+                title.style.color = `rgb(${pulse * 255}, 255, 255)`; // Sync title pulse
             } else {
                 borderMaterial.color.set(0x00ffff);
+                title.style.color = '#00ffff'; // Reset to cyan
             }
 
             if (dustParticles.length < 10) {
