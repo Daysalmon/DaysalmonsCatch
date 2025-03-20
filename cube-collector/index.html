@@ -29,6 +29,9 @@
 
         const ambientLight = new THREE.AmbientLight(0x404040, 0.5);
         scene.add(ambientLight);
+        const pointLight = new THREE.PointLight(0xffffff, 1, 100); // For shine
+        pointLight.position.set(0, 5, 15);
+        scene.add(pointLight);
 
         const starGeometry = new THREE.BufferGeometry();
         const starCount = 500;
@@ -67,13 +70,23 @@
             0xccff66, // Lime
             0xff9966  // Orange
         ];
+        const glowColors = [
+            0x99eeff, // Brighter Blue
+            0xffffcc, // Brighter Yellow
+            0xffccff, // Brighter Pink
+            0x99ffff, // Brighter Cyan
+            0xeeff99, // Brighter Lime
+            0xffcc99  // Brighter Orange
+        ];
         let colorIndex = 0;
         function addOrb(isPenalty = false) {
             const orbGeometry = new THREE.SphereGeometry(0.5, 32, 32);
-            const orbMaterial = new THREE.MeshBasicMaterial({ 
-                color: isPenalty ? 0x000000 : goodColors[colorIndex % goodColors.length] 
-            });
-            const orb = new THREE.Mesh(orbGeometry, orbMaterial);
+            const orb = new THREE.Mesh(
+                orbGeometry,
+                isPenalty 
+                    ? new THREE.MeshBasicMaterial({ color: 0x000000 })
+                    : new THREE.MeshPhongMaterial({ color: goodColors[colorIndex % goodColors.length], shininess: 50 })
+            );
             if (isPenalty) {
                 const outlineGeometry = new THREE.RingGeometry(0.5, 0.6, 32);
                 const outlineMaterial = new THREE.MeshBasicMaterial({ color: 0xff0000, side: THREE.DoubleSide });
@@ -88,6 +101,12 @@
                 
                 const outlineXZ = new THREE.Mesh(outlineGeometry, outlineMaterial);
                 orb.add(outlineXZ);
+            } else {
+                // Inner glow
+                const glowGeometry = new THREE.SphereGeometry(0.3, 16, 16);
+                const glowMaterial = new THREE.MeshBasicMaterial({ color: glowColors[colorIndex % glowColors.length] });
+                const glow = new THREE.Mesh(glowGeometry, glowMaterial);
+                orb.add(glow);
             }
             const aspect = window.innerWidth / window.innerHeight;
             const xRange = aspect < 1 ? 8 : 18;
@@ -168,6 +187,11 @@
             dashCooldown = Math.max(0, dashCooldown - 1);
 
             player.scale.set(1 + 0.1 * Math.sin(now * 0.005), 1 + 0.1 * Math.sin(now * 0.005), 1 + 0.1 * Math.sin(now * 0.005));
+            orbs.forEach(orb => {
+                if (!orb.userData.isPenalty) {
+                    orb.scale.set(1 + 0.05 * Math.sin(now * 0.003), 1 + 0.05 * Math.sin(now * 0.003), 1 + 0.05 * Math.sin(now * 0.003));
+                }
+            });
 
             if (dustParticles.length < 10) {
                 const dust = new THREE.Mesh(dustGeometry, dustMaterial);
