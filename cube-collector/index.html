@@ -27,6 +27,10 @@
         renderer.setSize(window.innerWidth, window.innerHeight);
         document.body.appendChild(renderer.domElement);
 
+        // Add ambient light for emissive
+        const ambientLight = new THREE.AmbientLight(0x404040, 1);
+        scene.add(ambientLight);
+
         const starGeometry = new THREE.BufferGeometry();
         const starCount = 500;
         const starPositions = new Float32Array(starCount * 3);
@@ -58,10 +62,18 @@
         const comboIndicator = document.getElementById('comboIndicator');
         function addOrb(isPenalty = false) {
             const orbGeometry = new THREE.SphereGeometry(0.5, 32, 32);
-            const orbMaterial = new THREE.MeshBasicMaterial({
-                color: isPenalty ? 0x666666 : Math.random() * 0xffffff,
+            let color;
+            if (isPenalty) {
+                color = 0x666666; // Gray for penalty
+            } else {
+                do {
+                    color = Math.random() * 0xffffff;
+                } while (color > 0xaaaaaa && color < 0x555555); // Avoid gray shades
+            }
+            const orbMaterial = new THREE.MeshPhongMaterial({
+                color: color,
                 emissive: isPenalty ? 0xff0000 : 0x333333,
-                emissiveIntensity: isPenalty ? 2 : 1 // Stronger red glow
+                emissiveIntensity: isPenalty ? 3 : 1 // Strong red glow
             });
             const orb = new THREE.Mesh(orbGeometry, orbMaterial);
             const aspect = window.innerWidth / window.innerHeight;
@@ -80,7 +92,7 @@
             orbs.push(orb);
         }
         function maintainOrbs() {
-            while (orbs.length < 3) addOrb(); // Keep at least 3 orbs
+            while (orbs.length < 3) addOrb();
             if (orbs.length < 4 && Math.random() < penaltyChance) addOrb(true);
         }
         for (let i = 0; i < 3; i++) addOrb();
@@ -148,7 +160,7 @@
             if (keys['ArrowDown']) player.position.y -= speed;
             if (keys['ArrowLeft']) player.position.x -= speed;
             if (keys['ArrowRight']) player.position.x += speed;
-            if (keys['Space'] && dashCooldown <= 0) {
+            if ((keys[' '] || keys['Space']) && dashCooldown <= 0) { // Check both
                 console.log('Dash triggered');
                 dashDuration = 30;
                 dashCooldown = 120;
@@ -189,7 +201,7 @@
                     if (orb.userData.life <= 0) {
                         scene.remove(orb);
                         orbs.splice(orbs.indexOf(orb), 1);
-                        maintainOrbs(); // Spawn replacement
+                        maintainOrbs();
                     }
                 }
             });
@@ -214,7 +226,7 @@
                         showCombo(points, orbX, orbY);
                     }
                     scoreDisplay.textContent = `Score: ${score}`;
-                    maintainOrbs(); // Ensure orb count
+                    maintainOrbs();
                 }
             }
 
@@ -227,7 +239,7 @@
                 }
                 scoreDisplay.textContent = `Score: ${score} | Time: ${Math.ceil(timeLeft)}s`;
             } else if (gameMode === 'endurance') {
-                penaltyChance = Math.min(0.5, penaltyChance + 0.005); // Faster ramp-up
+                penaltyChance = Math.min(0.5, penaltyChance + 0.005);
                 scoreDisplay.textContent = `Score: ${score} | Penalty: ${(penaltyChance * 100).toFixed(0)}%`;
             }
 
