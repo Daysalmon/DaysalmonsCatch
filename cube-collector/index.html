@@ -60,7 +60,8 @@
             const orbGeometry = new THREE.SphereGeometry(0.5, 32, 32);
             const orbMaterial = new THREE.MeshBasicMaterial({
                 color: isPenalty ? 0x666666 : Math.random() * 0xffffff,
-                emissive: isPenalty ? 0xff0000 : 0x333333
+                emissive: isPenalty ? 0xff0000 : 0x333333,
+                emissiveIntensity: isPenalty ? 2 : 1 // Stronger red glow
             });
             const orb = new THREE.Mesh(orbGeometry, orbMaterial);
             const aspect = window.innerWidth / window.innerHeight;
@@ -73,10 +74,14 @@
             orb.userData = { 
                 isPenalty, 
                 velocity: new THREE.Vector3((Math.random() - 0.5) * 0.02, (Math.random() - 0.5) * 0.02, 0),
-                life: isPenalty ? 300 : Infinity // 5s for penalties
+                life: isPenalty ? 300 : Infinity
             };
             scene.add(orb);
             orbs.push(orb);
+        }
+        function maintainOrbs() {
+            while (orbs.length < 3) addOrb(); // Keep at least 3 orbs
+            if (orbs.length < 4 && Math.random() < penaltyChance) addOrb(true);
         }
         for (let i = 0; i < 3; i++) addOrb();
         if (Math.random() < penaltyChance) addOrb(true);
@@ -144,9 +149,9 @@
             if (keys['ArrowLeft']) player.position.x -= speed;
             if (keys['ArrowRight']) player.position.x += speed;
             if (keys['Space'] && dashCooldown <= 0) {
-                console.log('Dash triggered'); // Debug
-                dashDuration = 30; // 0.5s
-                dashCooldown = 120; // 2s
+                console.log('Dash triggered');
+                dashDuration = 30;
+                dashCooldown = 120;
             }
             player.position.x += moveX;
             player.position.y += moveY;
@@ -184,6 +189,7 @@
                     if (orb.userData.life <= 0) {
                         scene.remove(orb);
                         orbs.splice(orbs.indexOf(orb), 1);
+                        maintainOrbs(); // Spawn replacement
                     }
                 }
             });
@@ -208,7 +214,7 @@
                         showCombo(points, orbX, orbY);
                     }
                     scoreDisplay.textContent = `Score: ${score}`;
-                    addOrb(Math.random() < penaltyChance);
+                    maintainOrbs(); // Ensure orb count
                 }
             }
 
@@ -221,7 +227,7 @@
                 }
                 scoreDisplay.textContent = `Score: ${score} | Time: ${Math.ceil(timeLeft)}s`;
             } else if (gameMode === 'endurance') {
-                penaltyChance = Math.min(0.5, penaltyChance + 0.001);
+                penaltyChance = Math.min(0.5, penaltyChance + 0.005); // Faster ramp-up
                 scoreDisplay.textContent = `Score: ${score} | Penalty: ${(penaltyChance * 100).toFixed(0)}%`;
             }
 
