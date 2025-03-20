@@ -42,27 +42,11 @@
         const stars = new THREE.Points(starGeometry, starMaterial);
         scene.add(stars);
 
-        // New Border: Glowing Edges
+        // New Border: Pulsing Wall
         const borderGeometry = new THREE.BoxGeometry(40, 32, 0.1);
-        const edges = new THREE.EdgesGeometry(borderGeometry);
-        const edgeMaterial = new THREE.LineBasicMaterial({ color: 0x00ffff, linewidth: 2 });
-        const borderEdges = new THREE.LineSegments(edges, edgeMaterial);
-        scene.add(borderEdges);
-
-        // Border Nodes
-        const nodeGeometry = new THREE.SphereGeometry(0.5, 16, 16);
-        const nodeMaterial = new THREE.MeshPhongMaterial({ color: 0x00ffff, shininess: 100 });
-        const nodes = [
-            new THREE.Mesh(nodeGeometry, nodeMaterial), // Top-left
-            new THREE.Mesh(nodeGeometry, nodeMaterial), // Top-right
-            new THREE.Mesh(nodeGeometry, nodeMaterial), // Bottom-left
-            new THREE.Mesh(nodeGeometry, nodeMaterial)  // Bottom-right
-        ];
-        nodes[0].position.set(-20, 16, 0);
-        nodes[1].position.set(20, 16, 0);
-        nodes[2].position.set(-20, -16, 0);
-        nodes[3].position.set(20, -16, 0);
-        nodes.forEach(node => scene.add(node));
+        const borderMaterial = new THREE.MeshBasicMaterial({ color: 0x00ffff, transparent: true, opacity: 0.1 });
+        const border = new THREE.Mesh(borderGeometry, borderMaterial);
+        scene.add(border);
 
         const playerGeometry = new THREE.BoxGeometry(1, 1, 1);
         const playerMaterial = new THREE.MeshBasicMaterial({ color: 0x00ff00, wireframe: true });
@@ -76,7 +60,6 @@
 
         const orbs = [];
         let score = 0, lastCollectTime = 0, combo = 0, penaltyChance = 0.2;
-        let dashCooldown = 0, dashDuration = 0;
         const scoreDisplay = document.getElementById('score');
         const comboIndicator = document.getElementById('comboIndicator');
         const goodColors = [
@@ -145,7 +128,7 @@
                 addOrb();
                 goodCount++;
             }
-            if (orbs.length < 5 && Math.random() < penaltyChance) addOrb(true); // Up to 5
+            if (orbs.length < 5 && Math.random() < penaltyChance) addOrb(true);
         }
         for (let i = 0; i < 3; i++) addOrb();
         if (Math.random() < penaltyChance) addOrb(true);
@@ -161,6 +144,7 @@
         updateCamera();
 
         const keys = {};
+        let dashCooldown = 0, dashDuration = 0;
         document.addEventListener('keydown', (e) => {
             keys[e.key] = true;
             if ((e.key === ' ' || e.key === 'Space') && dashCooldown <= 0) {
@@ -177,7 +161,7 @@
             gameMode = mode;
             document.getElementById('modeSelect').style.display = 'none';
             if (mode === 'timed') timeLeft = 60;
-            if (mode === 'endurance') penaltyChance = 0.2;
+            penaltyChance = 0.2; // Reset for all modes
             animate();
         }
 
@@ -212,10 +196,8 @@
                 }
             });
 
-            // Border pulsing
-            const borderScale = 1 + 0.02 * Math.sin(now * 0.002);
-            borderEdges.scale.set(borderScale, borderScale, 1);
-            nodes.forEach(node => node.scale.set(1 + 0.1 * Math.sin(now * 0.005), 1 + 0.1 * Math.sin(now * 0.005), 1 + 0.1 * Math.sin(now * 0.005)));
+            // Border pulsing opacity
+            borderMaterial.opacity = 0.1 + 0.2 * (Math.sin(now * 0.002) + 1) / 2; // 0.1 to 0.3
 
             if (dustParticles.length < 10) {
                 const dust = new THREE.Mesh(dustGeometry, dustMaterial);
@@ -274,6 +256,7 @@
 
             if (gameMode === 'timed') {
                 timeLeft -= 1 / 60;
+                penaltyChance = Math.min(0.5, penaltyChance + 0.005); // Ramps to 0.5
                 if (timeLeft <= 0) {
                     alert(`Game Over! Score: ${score}`);
                     gameMode = null;
@@ -281,8 +264,11 @@
                 }
                 scoreDisplay.textContent = `Score: ${score} | Time: ${Math.ceil(timeLeft)}s`;
             } else if (gameMode === 'endurance') {
-                penaltyChance = Math.min(0.5, penaltyChance + 0.005);
+                penaltyChance = Math.min(0.6, penaltyChance + 0.005); // Ramps to 0.6
                 scoreDisplay.textContent = `Score: ${score} | Penalty: ${(penaltyChance * 100).toFixed(0)}%`;
+            } else if (gameMode === 'free') {
+                penaltyChance = Math.min(0.5, penaltyChance + 0.005); // Ramps to 0.5
+                scoreDisplay.textContent = `Score: ${score}`;
             }
 
             renderer.render(scene, camera);
