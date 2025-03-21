@@ -201,8 +201,8 @@
             orb.userData = { 
                 isPenalty, 
                 velocity: new THREE.Vector3(
-                    (Math.random() - 0.5) * (isPenalty ? 0.04 : 0.03), // Faster: 0.04 bad, 0.03 good
-                    (Math.random() - 0.5) * (isPenalty ? 0.04 : 0.03),
+                    (Math.random() - 0.5) * (isPenalty ? 0.04 : 0.04), // Good orbs faster
+                    (Math.random() - 0.5) * (isPenalty ? 0.04 : 0.04),
                     0
                 ),
                 life: isPenalty ? 300 : Infinity,
@@ -214,13 +214,13 @@
         }
         function maintainOrbs() {
             let goodCount = orbs.filter(orb => !orb.userData.isPenalty).length;
-            while (goodCount < 3) {
+            while (goodCount < (gameMode === 'free' || gameMode === 'timed' ? 5 : 3)) { // Free/Timed: 5, Endurance: 3
                 addOrb();
                 goodCount++;
             }
-            if (orbs.length < 5 && Math.random() < penaltyChance) addOrb(true);
+            if (orbs.length < 7 && Math.random() < penaltyChance) addOrb(true); // Cap at 7 for now
         }
-        for (let i = 0; i < 6; i++) addOrb(); // 6 good orbs to start
+        for (let i = 0; i < 8; i++) addOrb(); // 8 good orbs to start
         if (Math.random() < penaltyChance) addOrb(true); // 1 bad orb chance
 
         function updateCamera() {
@@ -239,7 +239,7 @@
             keys[e.key] = true;
             if ((e.key === ' ' || e.key === 'Space') && dashCooldown <= 0) {
                 console.log('Dash triggered');
-                dashDuration = 45; // Longer duration
+                dashDuration = 60; // Longer duration
                 dashCooldown = 120;
             }
         });
@@ -277,7 +277,7 @@
         function animate() {
             if (!gameMode) return;
             requestAnimationFrame(animate);
-            const speed = dashDuration > 0 ? 0.2 : 0.1; // Slower dash speed
+            const speed = dashDuration > 0 ? 0.2 : 0.1;
             const now = Date.now();
 
             if (keys['ArrowUp']) player.position.y += speed;
@@ -297,7 +297,6 @@
                 }
             });
 
-            // Border Effects: Pulse for Good, Shake for Bad
             if (borderPulse > 0) {
                 borderPulse--;
                 const pulse = Math.sin(borderPulse * Math.PI / 30);
@@ -341,10 +340,9 @@
 
             orbs.forEach(orb => {
                 if (orb.userData.isPenalty) {
-                    // Bad orbs follow player
                     const direction = player.position.clone().sub(orb.position).normalize();
-                    orb.userData.velocity.add(direction.multiplyScalar(0.01)); // Homing speed
-                    orb.userData.velocity.clampLength(0, 0.04); // Cap speed
+                    orb.userData.velocity.add(direction.multiplyScalar(0.01));
+                    orb.userData.velocity.clampLength(0, 0.04);
                 }
                 orb.position.add(orb.userData.velocity);
                 if (orb.position.x > 19 || orb.position.x < -19) orb.userData.velocity.x *= -1;
@@ -398,8 +396,10 @@
                 }
                 timeText.textContent = `Time: ${Math.ceil(timeLeft)}s`;
             } else if (gameMode === 'endurance') {
-                penaltyChance = Math.min(0.6, penaltyChance + 0.005);
+                penaltyChance = Math.min(0.6, penaltyChance + 0.0005); // Slower ramp
                 penaltyText.textContent = `Penalty: ${(penaltyChance * 100).toFixed(0)}%`;
+            } else if (gameMode === 'free') {
+                penaltyChance = Math.min(0.5, penaltyChance + 0.005); // Match Timed
             }
 
             renderer.render(scene, camera);
