@@ -65,6 +65,21 @@
             display: none; 
             text-shadow: 0 0 0.5vw #ffff00; 
         }
+        #energyBar { 
+            position: absolute; 
+            bottom: 4.5vw; 
+            left: 2vw; 
+            width: 10vw; 
+            height: 1.5vw; 
+            background: #000; 
+            border: 0.2vw solid #00ffff; 
+            display: none; 
+        }
+        #energyFill { 
+            height: 100%; 
+            background: #00ffff; 
+            width: 50%; 
+        }
         canvas { width: 100%; height: 100%; }
     </style>
 </head>
@@ -74,6 +89,7 @@
         <p id="timeText" style="display: none;">Time: 60s</p>
         <p id="penaltyText" style="display: none;">Penalty: 20%</p>
     </div>
+    <div id="energyBar"><div id="energyFill"></div></div>
     <div id="title">CUBE COLLECTOR</div>
     <div id="modeSelect">
         <p>Select Mode:</p>
@@ -105,27 +121,31 @@
         const stars = new THREE.Points(starGeometry, starMaterial);
         scene.add(stars);
 
+        let borderWidth = 40, borderHeight = 32;
         const path = new THREE.Shape();
-        const width = 40, height = 32, radius = 2;
-        path.moveTo(-width / 2 + radius, height / 2 - 5);
-        path.lineTo(width / 2 - radius, height / 2 - 5);
-        path.quadraticCurveTo(width / 2, height / 2 - 5, width / 2, height / 2 - radius - 5);
-        path.lineTo(width / 2, -height / 2 + radius - 5);
-        path.quadraticCurveTo(width / 2, -height / 2 - 5, width / 2 - radius, -height / 2 - 5);
-        path.lineTo(-width / 2 + radius, -height / 2 - 5);
-        path.quadraticCurveTo(-width / 2, -height / 2 - 5, -width / 2, -height / 2 + radius - 5);
-        path.lineTo(-width / 2, height / 2 - radius - 5);
-        path.quadraticCurveTo(-width / 2, height / 2 - 5, -width / 2 + radius, height / 2 - 5);
-        const points = path.getPoints(128);
-        const borderGeometry = new THREE.TubeGeometry(
-            new THREE.CatmullRomCurve3(points.map(p => new THREE.Vector3(p.x, p.y, 0)), true),
-            256,
-            0.166,
-            8,
-            true
-        );
+        function updateBorder() {
+            path.clear();
+            const radius = 2;
+            path.moveTo(-borderWidth / 2 + radius, borderHeight / 2 - 5);
+            path.lineTo(borderWidth / 2 - radius, borderHeight / 2 - 5);
+            path.quadraticCurveTo(borderWidth / 2, borderHeight / 2 - 5, borderWidth / 2, borderHeight / 2 - radius - 5);
+            path.lineTo(borderWidth / 2, -borderHeight / 2 + radius - 5);
+            path.quadraticCurveTo(borderWidth / 2, -borderHeight / 2 - 5, borderWidth / 2 - radius, -borderHeight / 2 - 5);
+            path.lineTo(-borderWidth / 2 + radius, -borderHeight / 2 - 5);
+            path.quadraticCurveTo(-borderWidth / 2, -borderHeight / 2 - 5, -borderWidth / 2, -borderHeight / 2 + radius - 5);
+            path.lineTo(-borderWidth / 2, borderHeight / 2 - radius - 5);
+            path.quadraticCurveTo(-borderWidth / 2, borderHeight / 2 - 5, -borderWidth / 2 + radius, borderHeight / 2 - 5);
+            const points = path.getPoints(128);
+            const borderGeometry = new THREE.TubeGeometry(
+                new THREE.CatmullRomCurve3(points.map(p => new THREE.Vector3(p.x, p.y, 0)), true),
+                256, 0.166, 8, true
+            );
+            border.geometry.dispose();
+            border.geometry = borderGeometry;
+        }
         const borderMaterial = new THREE.MeshBasicMaterial({ color: 0x00ffff });
-        const border = new THREE.Mesh(borderGeometry, borderMaterial);
+        const border = new THREE.Mesh(new THREE.BufferGeometry(), borderMaterial);
+        updateBorder();
         scene.add(border);
 
         const playerGeometry = new THREE.BoxGeometry(1, 1, 1);
@@ -139,12 +159,15 @@
         const dustMaterial = new THREE.MeshBasicMaterial({ color: 0xaaaaaa });
 
         const orbs = [];
-        let score = 0, lastCollectTime = 0, combo = 0, penaltyChance = 0.2;
-        let borderPulse = 0, borderShake = 0, lastBallColor = 0x00ffff;
+        let score = 0, lastCollectTime = 0, combo = 0, comboTier = 0, stacks = 0, energy = 50;
+        let penaltyChance = 0.2, borderPulse = 0, borderShake = 0, lastBallColor = 0x00ffff;
+        let collectedCubes = [], shrinkTimer = 0;
         const scoreDisplay = document.getElementById('score');
         const scoreText = document.getElementById('scoreText');
         const timeText = document.getElementById('timeText');
         const penaltyText = document.getElementById('penaltyText');
+        const energyBar = document.getElementById('energyBar');
+        const energyFill = document.getElementById('energyFill');
         const title = document.getElementById('title');
         const comboIndicator = document.getElementById('comboIndicator');
         const goodColors = [
@@ -156,72 +179,94 @@
             0xff9966  // Orange
         ];
         const glowColors = [
-            0xccffff, // Very Bright Blue
-            0xffffee, // Very Bright Yellow
-            0xffddee, // Very Bright Pink
-            0xccffff, // Very Bright Cyan
-            0xeeffcc, // Very Bright Lime
-            0xffeedd  // Very Bright Orange
+            0xccffff, 0xffffee, 0xffddee, 0xccffff, 0xeeffcc, 0xffeedd
         ];
-        let colorIndex = 0;
-        function addOrb(isPenalty = false) {
-            const orbGeometry = new THREE.SphereGeometry(0.5, 32, 32);
+        const cubeTypes = [
+            { color: 0xff0000, name: 'speed' }, // Red: Dash speed 0.3
+            { color: 0x0000ff, name: 'shield' }, // Blue: Ignore next bad hit
+            { color: 0xffff00, name: 'magnet' }, // Yellow: Pull good orbs
+            { color: 0x00ff00, name: 'energy' } // Green: +20 energy
+        ];
+        let colorIndex = 0, dashBoost = 0, shieldActive = false, magnetActive = 0;
+
+        function addOrb(isPenalty = false, isFragment = false) {
+            const geometry = isFragment ? new THREE.BoxGeometry(0.2, 0.2, 0.2) : new THREE.SphereGeometry(0.5, 32, 32);
             const orb = new THREE.Mesh(
-                orbGeometry,
+                geometry,
                 isPenalty 
-                    ? new THREE.MeshBasicMaterial({ color: 0x000000 })
+                    ? new THREE.MeshBasicMaterial({ color: isFragment ? 0xaaaaaa : 0x000000 })
                     : new THREE.MeshPhongMaterial({ color: goodColors[colorIndex % goodColors.length], shininess: 100 })
             );
-            if (isPenalty) {
+            if (isPenalty && !isFragment) {
                 const outlineGeometry = new THREE.RingGeometry(0.5, 0.6, 32);
                 const outlineMaterial = new THREE.MeshBasicMaterial({ color: 0xff0000, side: THREE.DoubleSide });
-                
                 const outlineXY = new THREE.Mesh(outlineGeometry, outlineMaterial);
                 outlineXY.rotation.x = Math.PI / 2;
                 orb.add(outlineXY);
-                
                 const outlineYZ = new THREE.Mesh(outlineGeometry, outlineMaterial);
                 outlineYZ.rotation.y = Math.PI / 2;
                 orb.add(outlineYZ);
-                
                 const outlineXZ = new THREE.Mesh(outlineGeometry, outlineMaterial);
                 orb.add(outlineXZ);
-            } else {
+            } else if (!isPenalty && !isFragment) {
                 const glowGeometry = new THREE.SphereGeometry(0.4, 16, 16);
                 const glowMaterial = new THREE.MeshBasicMaterial({ color: glowColors[colorIndex % glowColors.length] });
                 const glow = new THREE.Mesh(glowGeometry, glowMaterial);
                 orb.add(glow);
             }
-            const xRange = 36;
+            const xRange = borderWidth - 4;
             orb.position.set(
                 (Math.random() - 0.5) * xRange,
-                (Math.random() - 0.5) * 28 - 5,
+                (Math.random() - 0.5) * (borderHeight - 12),
                 0
             );
             orb.userData = { 
                 isPenalty, 
+                isFragment,
                 velocity: new THREE.Vector3(
-                    (Math.random() - 0.5) * (isPenalty ? 0.04 : 0.04), // Good orbs faster
+                    (Math.random() - 0.5) * (isPenalty ? 0.04 : 0.04),
                     (Math.random() - 0.5) * (isPenalty ? 0.04 : 0.04),
                     0
                 ),
-                life: isPenalty ? 300 : Infinity,
-                color: isPenalty ? 0x000000 : goodColors[colorIndex % goodColors.length]
+                life: isFragment ? 300 : (isPenalty ? 300 : Infinity),
+                color: isFragment ? 0xaaaaaa : (isPenalty ? 0x000000 : goodColors[colorIndex % goodColors.length])
             };
             scene.add(orb);
             orbs.push(orb);
-            if (!isPenalty) colorIndex++;
+            if (!isPenalty && !isFragment) colorIndex++;
         }
+
+        function addCube() {
+            const cubeType = cubeTypes[Math.floor(Math.random() * cubeTypes.length)];
+            const cube = new THREE.Mesh(
+                new THREE.BoxGeometry(0.8, 0.8, 0.8),
+                new THREE.MeshBasicMaterial({ color: cubeType.color, wireframe: true })
+            );
+            const xRange = borderWidth - 4;
+            cube.position.set(
+                (Math.random() - 0.5) * xRange,
+                (Math.random() - 0.5) * (borderHeight - 12),
+                0
+            );
+            cube.userData = { isCube: true, type: cubeType.name, life: 600 }; // 10s life
+            scene.add(cube);
+            orbs.push(cube);
+        }
+
         function maintainOrbs() {
-            let goodCount = orbs.filter(orb => !orb.userData.isPenalty).length;
-            while (goodCount < (gameMode === 'free' || gameMode === 'timed' ? 5 : 3)) { // Free/Timed: 5, Endurance: 3
+            let goodCount = orbs.filter(o => !o.userData.isPenalty && !o.userData.isFragment && !o.userData.isCube).length;
+            while (goodCount < (gameMode === 'free' || gameMode === 'timed' ? 5 : 3)) {
                 addOrb();
                 goodCount++;
             }
-            if (orbs.length < 7 && Math.random() < penaltyChance) addOrb(true); // Cap at 7 for now
+            if (orbs.length < 7 && Math.random() < penaltyChance) addOrb(true);
+            if (score > 0 && score % 50 === 0 && !orbs.some(o => o.userData.isCube)) {
+                addCube();
+                if (Math.random() < 0.02) addCube(); // Magnet Cube chance
+            }
         }
-        for (let i = 0; i < 8; i++) addOrb(); // 8 good orbs to start
-        if (Math.random() < penaltyChance) addOrb(true); // 1 bad orb chance
+        for (let i = 0; i < 8; i++) addOrb();
+        if (Math.random() < penaltyChance) addOrb(true);
 
         function updateCamera() {
             const aspect = window.innerWidth / window.innerHeight;
@@ -237,10 +282,11 @@
         let dashCooldown = 0, dashDuration = 0;
         document.addEventListener('keydown', (e) => {
             keys[e.key] = true;
-            if ((e.key === ' ' || e.key === 'Space') && dashCooldown <= 0) {
+            if ((e.key === ' ' || e.key === 'Space') && dashCooldown <= 0 && energy >= 20) {
                 console.log('Dash triggered');
-                dashDuration = 60; // Longer duration
+                dashDuration = 60;
                 dashCooldown = 120;
+                energy -= 20;
             }
         });
         document.addEventListener('keyup', (e) => keys[e.key] = false);
@@ -251,6 +297,11 @@
             gameMode = mode;
             document.getElementById('modeSelect').style.display = 'none';
             document.getElementById('score').style.display = 'block';
+            document.getElementById('energyBar').style.display = 'block';
+            collectedCubes = [];
+            borderWidth = 40;
+            borderHeight = 32;
+            updateBorder();
             if (mode === 'timed') {
                 timeLeft = 60;
                 timeText.style.display = 'block';
@@ -277,22 +328,26 @@
         function animate() {
             if (!gameMode) return;
             requestAnimationFrame(animate);
-            const speed = dashDuration > 0 ? 0.2 : 0.1;
+            const speed = dashDuration > 0 ? (dashBoost > 0 ? 0.3 : 0.2) : 0.1;
             const now = Date.now();
 
             if (keys['ArrowUp']) player.position.y += speed;
             if (keys['ArrowDown']) player.position.y -= speed;
             if (keys['ArrowLeft']) player.position.x -= speed;
             if (keys['ArrowRight']) player.position.x += speed;
-            player.position.x = Math.max(-20, Math.min(20, player.position.x));
-            player.position.y = Math.max(-21, Math.min(11, player.position.y));
+            player.position.x = Math.max(-borderWidth / 2 + 1, Math.min(borderWidth / 2 - 1, player.position.x));
+            player.position.y = Math.max(-borderHeight / 2 - 4, Math.min(borderHeight / 2 - 6, player.position.y));
 
             dashDuration = Math.max(0, dashDuration - 1);
             dashCooldown = Math.max(0, dashCooldown - 1);
+            dashBoost = Math.max(0, dashBoost - 1);
+            magnetActive = Math.max(0, magnetActive - 1);
+            energy = Math.min(100, Math.max(0, energy));
+            energyFill.style.width = `${(energy / 100) * 100}%`;
 
-            player.scale.set(1 + 0.1 * Math.sin(now * 0.005), 1 + 0.1 * Math.sin(now * 0.005), 1 + 0.1 * Math.sin(now * 0.005));
+            player.scale.set(1 + 0.1 * Math.sin(now * 0.005) + stacks * 0.05, 1 + 0.1 * Math.sin(now * 0.005) + stacks * 0.05, 1 + 0.1 * Math.sin(now * 0.005));
             orbs.forEach(orb => {
-                if (!orb.userData.isPenalty) {
+                if (!orb.userData.isPenalty && !orb.userData.isFragment && !orb.userData.isCube) {
                     orb.scale.set(1 + 0.1 * Math.sin(now * 0.005), 1 + 0.1 * Math.sin(now * 0.005), 1 + 0.1 * Math.sin(now * 0.005));
                 }
             });
@@ -315,6 +370,16 @@
                 borderMaterial.color.set(0x00ffff);
                 title.style.color = '#00ffff';
                 border.scale.set(1, 1, 1);
+            } else if (collectedCubes.length === 6) {
+                borderPulse = 600; // 10s gold
+                borderMaterial.color.set(0xffd700);
+                title.style.color = '#ffd700';
+                orbs.filter(o => o.userData.isPenalty && !o.userData.isFragment).forEach(o => {
+                    scene.remove(o);
+                    orbs.splice(orbs.indexOf(o), 1);
+                });
+                score += 100;
+                collectedCubes = [];
             } else {
                 borderMaterial.color.set(0x00ffff);
                 title.style.color = '#00ffff';
@@ -339,18 +404,25 @@
             else playerMaterial.color.set(0x00ff00);
 
             orbs.forEach(orb => {
-                if (orb.userData.isPenalty) {
+                if (orb.userData.isPenalty && !orb.userData.isFragment) {
                     const direction = player.position.clone().sub(orb.position).normalize();
                     orb.userData.velocity.add(direction.multiplyScalar(0.01));
                     orb.userData.velocity.clampLength(0, 0.04);
+                } else if (magnetActive > 0 && !orb.userData.isPenalty && !orb.userData.isFragment && !orb.userData.isCube) {
+                    const direction = player.position.clone().sub(orb.position).normalize();
+                    orb.userData.velocity.add(direction.multiplyScalar(0.02));
+                    orb.userData.velocity.clampLength(0, 0.04);
                 }
                 orb.position.add(orb.userData.velocity);
-                if (orb.position.x > 19 || orb.position.x < -19) orb.userData.velocity.x *= -1;
-                if (orb.position.y > 11 || orb.position.y < -20) orb.userData.velocity.y *= -1;
+                if (orb.position.x > borderWidth / 2 - 1 || orb.position.x < -borderWidth / 2 + 1) orb.userData.velocity.x *= -1;
+                if (orb.position.y > borderHeight / 2 - 6 || orb.position.y < -borderHeight / 2 - 4) orb.userData.velocity.y *= -1;
                 orb.position.z = 0;
-                if (orb.userData.isPenalty) {
+                if ((orb.userData.isPenalty && !orb.userData.isFragment) || orb.userData.isFragment || orb.userData.isCube) {
                     orb.userData.life--;
                     if (orb.userData.life <= 0) {
+                        if (orb.userData.isPenalty && !orb.userData.isFragment) {
+                            for (let i = 0; i < 3; i++) addOrb(true, true); // Fragments
+                        }
                         scene.remove(orb);
                         orbs.splice(orbs.indexOf(orb), 1);
                         maintainOrbs();
@@ -363,22 +435,57 @@
                 if (distance < 1.5) {
                     scene.remove(orbs[i]);
                     const wasPenalty = orbs[i].userData.isPenalty;
+                    const isFragment = orbs[i].userData.isFragment;
+                    const isCube = orbs[i].userData.isCube;
                     const orbX = orbs[i].position.x, orbY = orbs[i].position.y;
                     lastBallColor = orbs[i].userData.color;
                     orbs.splice(i, 1);
-                    if (wasPenalty) {
-                        score -= 20;
-                        combo = 0;
-                        showCombo(-20, orbX, orbY);
-                        borderShake = 20;
+                    if (wasPenalty && !isFragment) {
+                        if (shieldActive) {
+                            shieldActive = false;
+                        } else {
+                            score -= 20;
+                            combo = Math.max(0, combo - 3);
+                            comboTier = Math.max(0, comboTier - 1);
+                            stacks = Math.max(0, stacks - 1);
+                            energy -= 10;
+                            showCombo(-20, orbX, orbY);
+                            borderShake = 20;
+                        }
+                    } else if (isFragment) {
+                        score += 2;
+                        showCombo(2, orbX, orbY);
+                    } else if (isCube) {
+                        const cubeType = orbs[i].userData.type;
+                        collectedCubes.push(cubeType);
+                        if (cubeType === 'speed') dashBoost = 600; // 10s
+                        else if (cubeType === 'shield') shieldActive = true;
+                        else if (cubeType === 'magnet') magnetActive = 300; // 5s
+                        else if (cubeType === 'energy') energy += 20;
+                        if (gameMode === 'free') {
+                            borderMaterial.color.set(cubeTypes.find(t => t.name === cubeType).color);
+                        }
+                        if (gameMode === 'endurance') {
+                            borderWidth = 40;
+                            borderHeight = 32;
+                            updateBorder();
+                        }
                     } else {
                         const timeSinceLast = (now - lastCollectTime) / 1000;
-                        const points = timeSinceLast < 2 ? 10 + combo * 5 : 10;
-                        score += points;
+                        const points = (timeSinceLast < 2 ? 10 + combo * 5 : 10) * (1 + stacks * 0.25) * (comboTier === 0 ? 1 : comboTier === 1 ? 1.5 : comboTier === 2 ? 2 : 2.5);
+                        score += Math.floor(points);
                         combo = timeSinceLast < 2 ? combo + 1 : 0;
+                        comboTier = combo >= 9 ? 2 : combo >= 6 ? 1 : combo >= 3 ? 0 : -1;
+                        stacks = Math.min(5, stacks + 1);
+                        energy += 5;
                         lastCollectTime = now;
-                        showCombo(points, orbX, orbY);
+                        showCombo(Math.floor(points), orbX, orbY);
                         borderPulse = 30;
+                        if (gameMode === 'endurance' && score % 50 === 0) {
+                            borderWidth = 40;
+                            borderHeight = 32;
+                            updateBorder();
+                        }
                     }
                     scoreText.textContent = `Score: ${score}`;
                     maintainOrbs();
@@ -388,18 +495,33 @@
             if (gameMode === 'timed') {
                 timeLeft -= 1 / 60;
                 penaltyChance = Math.min(0.5, penaltyChance + 0.005);
+                if (score % 50 === 0 && score > 0) timeLeft += 5;
+                if (timeLeft <= 10 && timeLeft > 0) {
+                    penaltyChance = 1; // Cube Rush
+                    goodColors.forEach((_, i) => glowColors[i] = 0xffffff); // Brighten orbs
+                }
                 if (timeLeft <= 0) {
                     alert(`Game Over! Score: ${score}`);
                     gameMode = null;
                     document.getElementById('modeSelect').style.display = 'block';
                     document.getElementById('score').style.display = 'none';
+                    document.getElementById('energyBar').style.display = 'none';
                 }
                 timeText.textContent = `Time: ${Math.ceil(timeLeft)}s`;
             } else if (gameMode === 'endurance') {
-                penaltyChance = Math.min(0.6, penaltyChance + 0.0005); // Slower ramp
+                penaltyChance = Math.min(0.6, penaltyChance + 0.0005);
                 penaltyText.textContent = `Penalty: ${(penaltyChance * 100).toFixed(0)}%`;
+                if (score % 100 === 0 && score > 0 && shrinkTimer <= 0) {
+                    borderWidth *= 0.9;
+                    borderHeight *= 0.9;
+                    borderWidth = Math.max(20, borderWidth);
+                    borderHeight = Math.max(16, borderHeight);
+                    updateBorder();
+                    shrinkTimer = 600; // 10s
+                }
+                shrinkTimer = Math.max(0, shrinkTimer - 1);
             } else if (gameMode === 'free') {
-                penaltyChance = Math.min(0.5, penaltyChance + 0.005); // Match Timed
+                penaltyChance = Math.min(0.5, penaltyChance + 0.005);
             }
 
             renderer.render(scene, camera);
