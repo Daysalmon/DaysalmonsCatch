@@ -1,206 +1,84 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <title>Connect 4 - Player vs AI</title>
-    <style>
-        body { margin: 0; overflow: hidden; background: #f0f0f0; }
-        canvas { display: block; }
-        #difficulty { position: absolute; top: 10px; left: 10px; }
-    </style>
-</head>
-<body>
-    <select id="difficulty">
-        <option value="easy">Easy AI</option>
-        <option value="hard">Hard AI</option>
-    </select>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r134/three.min.js"></script>
-    <script src="https://unpkg.com/cannon@0.6.2/build/cannon.min.js"></script>
-    <script>
-        // Scene setup
-        const scene = new THREE.Scene();
-        const camera = new THREE.OrthographicCamera(-2, 2, 1.5, -1.5, 0.1, 1000); // Smaller viewport
-        camera.position.z = 10;
-        const renderer = new THREE.WebGLRenderer();
-        renderer.setSize(window.innerWidth, window.innerHeight);
-        document.body.appendChild(renderer.domElement);
+// Setup Three.js
+const scene = new THREE.Scene();
+const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+const renderer = new THREE.WebGLRenderer({ canvas: document.getElementById('gameCanvas') });
+renderer.setSize(window.innerWidth, window.innerHeight);
+document.body.appendChild(renderer.domElement);
 
-        // Physics world
-        const world = new CANNON.World();
-        world.gravity.set(0, -10, 0);
+// Lighting
+const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
+scene.add(ambientLight);
+const directionalLight = new THREE.DirectionalLight(0xffffff, 0.5);
+directionalLight.position.set(0, 10, 10);
+scene.add(directionalLight);
 
-        // Game state
-        const grid = Array(6).fill().map(() => Array(7).fill(null)); // 6 rows, 7 cols
-        let currentPlayer = 'red';
-        let gameOver = false;
+// Background (simple oceany plane)
+const backgroundGeometry = new THREE.PlaneGeometry(20, 20);
+const backgroundMaterial = new THREE.MeshBasicMaterial({ color: 0x87ceeb }); // Light blue
+const background = new THREE.Mesh(backgroundGeometry, backgroundMaterial);
+background.position.z = -5;
+scene.add(background);
 
-        // Grid visuals (smaller blue frame)
-        const gridGeo = new THREE.BoxGeometry(3.5, 3, 0.1); // Half the size
-        const gridMat = new THREE.MeshBasicMaterial({ color: 0x0000ff });
-        const gridMesh = new THREE.Mesh(gridGeo, gridMat);
-        scene.add(gridMesh);
+// Game Board (7x6 grid, blue, cartoonish)
+const board = new THREE.Group();
+const slotGeometry = new THREE.BoxGeometry(0.9, 0.1, 0.9);
+const slotMaterial = new THREE.MeshPhongMaterial({ color: 0x0000ff, shininess: 50 });
+for (let x = 0; x < 7; x++) {
+    for (let y = 0; y < 6; y++) {
+        const slot = new THREE.Mesh(slotGeometry, slotMaterial);
+        slot.position.set(x - 3, y - 2.5, 0);
+        board.add(slot);
+    }
+}
+scene.add(board);
 
-        // Holes in grid (scaled down)
-        const holeGeo = new THREE.CircleGeometry(0.2, 32); // Smaller holes
-        const holeMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
-        for (let row = 0; row < 6; row++) {
-            for (let col = 0; col < 7; col++) {
-                const hole = new THREE.Mesh(holeGeo, holeMat);
-                hole.position.set((col - 3) * 0.5, 1.25 - row * 0.5, 0.1); // Tighter spacing
-                scene.add(hole);
-            }
+// Camera position for slight isometric view
+camera.position.set(0, 5, 10);
+camera.lookAt(0, 0, 0);
+
+// Game state
+const boardState = Array(6).fill().map(() => Array(7).fill(null));
+
+// Drop a piece (red for now)
+function dropPiece(column) {
+    const lowestRow = boardState.findIndex(row => !row[column]);
+    if (lowestRow === -1) return; // Column full
+
+    const pieceGeometry = new THREE.SphereGeometry(0.4, 32, 32);
+    const pieceMaterial = new THREE.MeshPhongMaterial({ color: 0xff0000 });
+    const piece = new THREE.Mesh(pieceGeometry, pieceMaterial);
+    piece.position.set(column - 3, 5, 0); // Start above board
+    scene.add(piece);
+
+    // Simple drop animation (no physics yet)
+    const drop = () => {
+        if (piece.position.y > lowestRow - 2.5) {
+            piece.position.y -= 0.1;
+            requestAnimationFrame(drop);
+        } else {
+            piece.position.y = lowestRow - 2.5;
+            boardState[lowestRow][column] = 'red';
         }
+    };
+    drop();
+}
 
-        // Disc creation function (smaller discs)
-        function createDisc(col, color) {
-            const discGeo = new THREE.CircleGeometry(0.2, 32);
-            const discMat = new THREE.MeshBasicMaterial({ color: color === 'red' ? 0xff0000 : 0xffff00 });
-            const disc = new THREE.Mesh(discGeo, discMat);
-            disc.position.set((col - 3) * 0.5, 1.75, 0.2); // Start above smaller grid
-            scene.add(disc);
+// Click to drop piece
+renderer.domElement.addEventListener('click', (event) => {
+    const col = Math.floor((event.clientX / window.innerWidth) * 7);
+    dropPiece(col);
+});
 
-            const body = new CANNON.Body({
-                mass: 1,
-                shape: new CANNON.Sphere(0.2),
-                position: new CANNON.Vec3((col - 3) * 0.5, 1.75, 0.2),
-                velocity: new CANNON.Vec3(0, -1, 0)
-            });
-            body.linearDamping = 0.5;
-            world.addBody(body);
-            return { mesh: disc, body };
-        }
+// Animation loop
+function animate() {
+    requestAnimationFrame(animate);
+    renderer.render(scene, camera);
+}
+animate();
 
-        // Ground for physics (adjusted for smaller grid)
-        const groundBody = new CANNON.Body({
-            mass: 0,
-            shape: new CANNON.Plane(),
-            position: new CANNON.Vec3(0, -1.5, 0)
-        });
-        groundBody.quaternion.setFromAxisAngle(new CANNON.Vec3(1, 0, 0), -Math.PI / 2);
-        world.addBody(groundBody);
-
-        // Column boundaries (smaller walls)
-        for (let col = 0; col < 8; col++) {
-            const wallBody = new CANNON.Body({
-                mass: 0,
-                shape: new CANNON.Box(new CANNON.Vec3(0.05, 1.5, 0.1)), // Thinner, shorter walls
-                position: new CANNON.Vec3((col - 3.5) * 0.5, 0, 0.2)
-            });
-            world.addBody(wallBody);
-        }
-
-        // Check win condition (unchanged logic)
-        function checkWin(color) {
-            const player = color === 'red' ? 'P' : 'AI';
-            for (let r = 0; r < 6; r++) {
-                for (let c = 0; c < 7; c++) {
-                    if (c <= 3 && grid[r][c] === player && grid[r][c+1] === player && grid[r][c+2] === player && grid[r][c+3] === player) return true;
-                    if (r <= 2 && grid[r][c] === player && grid[r+1][c] === player && grid[r+2][c] === player && grid[r+3][c] === player) return true;
-                    if (r <= 2 && c <= 3 && grid[r][c] === player && grid[r+1][c+1] === player && grid[r+2][c+2] === player && grid[r+3][c+3] === player) return true;
-                    if (r <= 2 && c >= 3 && grid[r][c] === player && grid[r+1][c-1] === player && grid[r+2][c-2] === player && grid[r+3][c-3] === player) return true;
-                }
-            }
-            return false;
-        }
-
-        // AI move (unchanged logic)
-        function aiMove() {
-            if (gameOver || currentPlayer === 'red') return;
-            const difficulty = document.getElementById('difficulty').value;
-            let col;
-
-            if (difficulty === 'hard') {
-                for (let c = 0; c < 7; c++) {
-                    if (canDrop(c)) {
-                        const row = getLowestRow(c);
-                        grid[row][c] = 'AI';
-                        if (checkWin('yellow')) {
-                            grid[row][c] = null;
-                            col = c;
-                            break;
-                        }
-                        grid[row][c] = null;
-                    }
-                }
-                if (col === undefined) {
-                    for (let c = 0; c < 7; c++) {
-                        if (canDrop(c)) {
-                            const row = getLowestRow(c);
-                            grid[row][c] = 'P';
-                            if (checkWin('red')) {
-                                grid[row][c] = null;
-                                col = c;
-                                break;
-                            }
-                            grid[row][c] = null;
-                        }
-                    }
-                }
-            }
-            if (col === undefined) {
-                do { col = Math.floor(Math.random() * 7); } while (!canDrop(col));
-            }
-            dropDisc(col, 'yellow');
-        }
-
-        function canDrop(col) {
-            return grid[0][col] === null;
-        }
-
-        function getLowestRow(col) {
-            for (let r = 5; r >= 0; r--) {
-                if (grid[r][col] === null) return r;
-            }
-        }
-
-        // Drop disc
-        const discs = [];
-        function dropDisc(col, color) {
-            if (!canDrop(col) || gameOver) return;
-            const disc = createDisc(col, color);
-            discs.push(disc);
-            const row = getLowestRow(col);
-            grid[row][col] = color === 'red' ? 'P' : 'AI';
-            setTimeout(() => {
-                if (checkWin(color)) {
-                    alert(`${color === 'red' ? 'Player' : 'AI'} wins!`);
-                    gameOver = true;
-                }
-                currentPlayer = currentPlayer === 'red' ? 'yellow' : 'red';
-                if (currentPlayer === 'yellow') setTimeout(aiMove, 500);
-            }, 1000);
-        }
-
-        // Player input (adjusted for smaller grid)
-        renderer.domElement.addEventListener('click', (event) => {
-            if (currentPlayer !== 'red' || gameOver) return;
-            const rect = renderer.domElement.getBoundingClientRect();
-            const x = ((event.clientX - rect.left) / rect.width) * 4 - 2; // Adjusted for new camera width
-            const col = Math.floor((x + 1.75) / 0.5); // Map to 7 columns
-            if (col >= 0 && col < 7) dropDisc(col, 'red');
-        });
-
-        // Animation loop
-        function animate() {
-            requestAnimationFrame(animate);
-            world.step(1 / 60);
-            discs.forEach(disc => {
-                disc.mesh.position.copy(disc.body.position);
-                disc.mesh.quaternion.copy(disc.body.quaternion);
-            });
-            renderer.render(scene, camera);
-        }
-        animate();
-
-        // Resize handler (adjusted for smaller grid)
-        window.addEventListener('resize', () => {
-            renderer.setSize(window.innerWidth, window.innerHeight);
-            camera.left = -2;
-            camera.right = 2;
-            camera.top = 1.5;
-            camera.bottom = -1.5;
-            camera.updateProjectionMatrix();
-        });
-    </script>
-</body>
-</html>
+// Resize handler
+window.addEventListener('resize', () => {
+    camera.aspect = window.innerWidth / window.innerHeight;
+    camera.updateProjectionMatrix();
+    renderer.setSize(window.innerWidth, window.innerHeight);
+});
